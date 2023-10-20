@@ -71,9 +71,9 @@ type Actions<T> = {
 
 type ValueArrProxy<TArr extends unknown[]> = TArr extends Array<infer TArrElem>
   ? TArrElem extends GenericObject
-    ? ValueProxy<TArrElem>[]
+    ? never
     : TArrElem extends Array<unknown>
-    ? ValueArrProxy<TArrElem>
+    ? never
     : Actions<TArrElem>[]
   : never;
 
@@ -187,7 +187,7 @@ type Contact = {
   categories: string[];
   address: {
     city: string;
-    street: string;
+    street?: string;
     postalCode: number;
   };
 };
@@ -215,6 +215,7 @@ contact.age;
 
 control.address.postalCode.set(123);
 const city = control.address.city.get();
+const street = control.address.street?.set("test");
 control.categories[0]?.set("a");
 control.categories[0]?.get();
 control.age.get();
