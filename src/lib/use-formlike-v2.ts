@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
 type Options<TState> = {
@@ -26,13 +26,19 @@ function useFieldlike<FormLike>(defaultValue: FormLike, options?: Options<FormLi
   const [dirty, setDirty] = useState(false);
   const [mounted, _setMounted] = useState(false);
 
+  useEffect(() => {
+    if (!dirty) {
+      _setValue(defaultValue);
+    }
+  }, [defaultValue]);
+
   function set(value: FormLike | ((prev: FormLike) => FormLike)) {
     _setValue(typeof value === "function" ? (value as Function)(value) : value);
     setDirty(true);
   }
 
   const reset = () => {
-    set(defaultValue);
+    _setValue(defaultValue);
     setDirty(false);
     setError(undefined);
   };
@@ -53,26 +59,17 @@ function useFieldlike<FormLike>(defaultValue: FormLike, options?: Options<FormLi
   return actions;
 }
 
-const schema = z.object({
-  name: z.string(),
-  age: z.number(),
-  address: z.object({
-    city: z.string(),
-    street: z.string(),
-  }),
-});
-
-type Contact = {
-  name: string | undefined;
-  age: number | null;
-  gender: "male" | "female";
-  categories: string[];
-  address: {
-    city: string;
-    street?: string;
-    postalCode: number;
-  };
-};
+// type Contact = {
+//   name: string | undefined;
+//   age: number | null;
+//   gender: "male" | "female";
+//   categories: string[];
+//   address: {
+//     city: string;
+//     street?: string;
+//     postalCode: number;
+//   };
+// };
 
 // const contact = useFieldlike<Contact>({
 //   name: undefined,
@@ -88,11 +85,11 @@ type Contact = {
 
 // contact.get();
 
-type Stack<T> = {
-  [x: string]: T | Stack<T>;
+type NesteableRecord<T> = {
+  [x: string]: T | NesteableRecord<T>;
 };
 
-type FormLike = Stack<FieldLikeAny>;
+type FormLike = NesteableRecord<FieldLikeAny>;
 
 type Prettify<T> = T & {};
 
@@ -114,13 +111,41 @@ function _get<TForm extends FormLike>(form: TForm): FormLikeValue<TForm> {
   }, {} as Record<string, unknown>) as FormLikeValue<TForm>;
 }
 
-function useFormLike<TForm extends FormLike>(form: TForm) {
+// type FormOptions<TForm extends FormLike> = {
+//   schema?: z.ZodType;
+// };
+
+function useFormLike<TForm extends FormLike, TSchema extends z.ZodType = any>(
+  form: TForm,
+  options?: { schema: TSchema }
+) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   function get() {
     return _get(form);
   }
 
+  function validate(cb?: (value: z.infer<TSchema>) => void | Promise<void>) {
+    const schema = options?.schema;
+    if (!schema) return false;
+    try {
+      const value = get();
+      const res = schema.parse(value);
+      setErrors({});
+      cb?.(res);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors(error.errors.reduce((acc, error) => ({ ...acc, [error.path.join(".")]: error.message }), {}));
+      }
+      return false;
+    }
+  }
+
   return {
+    form,
     get,
+    validate,
   };
 }
 
@@ -134,15 +159,23 @@ const phone = useFieldlike("");
 const email = useFieldlike(1);
 const isSuscribed = useFieldlike(true);
 
-const contact = useFormLike({
-  name,
-  age,
-  address,
-  comunication: {
-    phone,
-    email,
-    isSuscribed,
+const contact = useFormLike(
+  {
+    name,
+    age,
+    address,
+    comunication: {
+      phone,
+      email,
+      isSuscribed,
+    },
   },
-});
+  {
+    schema: z.object({
+      test: z.string(),
+    }),
+  }
+);
 
 const a = contact.get();
+const b = contact.validate((val) => console.log(val));
