@@ -1,221 +1,182 @@
-import { editObject, getObject } from "@/lib/objects";
-import { createFlatProxy, createRecursiveProxy } from "@/lib/proxy";
-import { useMemo, useState } from "react";
+import { type SetStateAction, useCallback, useState, useMemo, useEffect } from "react";
 import { z } from "zod";
 
-// type DeepOptional<T extends Record<string, unknown>> =
+/***   Utility Types   ***/
+// eslint-disable-next-line @typescript-eslint/ban-types
+type Prettify<T> = T & {};
 
-type NonOptionalKeys<T extends Record<string, unknown>> = NonNullable<
-  {
-    [V in keyof T]: IsntOptional<T[V]>;
-  }[keyof T]
-> extends true
-  ? true
-  : false;
-
-// type DeepOptional<T extends Record<string, unknown>> = {
-
-// }
-
-type IsOptional<T> = [T] extends [NonNullable<T>] ? false : true;
-type IsntOptional<T> = [T] extends [NonNullable<T>] ? true : false;
-
-// type b = IsOptional<null>;
-// // type c = string  extends string | null ? true : false;
-
-// type a = KeysAllOptional<{
-//   name?: string;
-//   age?: number;
-//   address?: {
-//     city: string;
-//     street: string;
-//   };
-// }>;
-
-const isObjectOrArray = (val: unknown) => {
-  const toStringVal = Object.prototype.toString.call(val);
-  return ["[object Object]", "[object Array]"].includes(toStringVal);
+type NesteableRecord<T> = {
+  [x: string]: T | NesteableRecord<T>;
 };
 
-type GenericObject = Record<string, unknown>;
-
-export const flattenObject = (obj: GenericObject, roots = []) => {
-  const keys = Object.keys(obj);
-
-  return keys.reduce((memo, prop) => {
-    const isNested = isObjectOrArray(obj[prop]);
-
-    const newRoots = (
-      isNested
-        ? flattenObject(obj[prop] as never, roots.concat([prop as never]))
-        : { [roots.concat([prop as never]).join(".")]: obj[prop] }
-    ) as GenericObject;
-
-    return Object.assign({}, memo, newRoots);
-  }, {} as GenericObject);
-};
-
-type Options<TState> = {
-  defaultValues: TState;
-  schema?: z.ZodType;
-};
-
-type Actions<T> = {
+/***    Fieldlike     ***/
+export type FieldLike<T> = {
+  __type: "fieldlike";
   get: () => T;
   set: (value: T) => void;
   reset: () => void;
   setError: (error: string | undefined) => void;
   clearError: () => void;
   error: () => string | undefined;
+  dirty: boolean;
+  mounted: boolean;
+  suscribe: () => void;
+  unsucribe: () => void;
 };
 
-type ValueArrProxy<TArr extends unknown[]> = TArr extends Array<infer TArrElem>
-  ? TArrElem extends GenericObject
-    ? never
-    : TArrElem extends Array<unknown>
-    ? never
-    : Actions<TArrElem>[]
-  : never;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FieldLikeAny = FieldLike<any>;
 
-export type ValueProxy<TObj> = TObj extends unknown[]
-  ? ValueArrProxy<TObj>
-  : TObj extends GenericObject
-  ? {
-      [TKey in keyof TObj]: TKey extends string
-        ? TObj[TKey] extends GenericObject
-          ? ValueProxy<TObj[TKey]>
-          : TObj[TKey] extends Array<unknown>
-          ? ValueArrProxy<TObj[TKey]>
-          : Actions<TObj[TKey]>
-        : never;
+export function useFieldLike<FormLike>(_defaultValue: FormLike) {
+  const [defaultValue, setDefaultValue] = useState(_defaultValue);
+  const [value, _setValue] = useState(defaultValue);
+  const [_error, setError] = useState<string>();
+  const [dirty, setDirty] = useState(false);
+  const [mounted, _setMounted] = useState(false);
+
+  useEffect(() => {
+    if (JSON.stringify(defaultValue) !== JSON.stringify(_defaultValue)) {
+      setDefaultValue(_defaultValue);
+      if (!dirty) {
+        _setValue(_defaultValue);
+      }
     }
-  : Actions<TObj>;
+  }, [_defaultValue, defaultValue, dirty]);
 
-type a = ValueProxy<Contact>["address"];
+  const get = useCallback(() => value, [value]);
 
-// type b = a["nest"][0]["get"];
+  const set = useCallback((value: SetStateAction<FormLike>) => {
+    _setValue(value);
+    setDirty(true);
+  }, []);
 
-function useFormlike<Form extends GenericObject>(options: Options<Form>) {
-  const [values, _setValues] = useState(options.defaultValues);
-  const [errors, _setErrors] = useState<Record<string, string | undefined>>({});
-  const [dirty, _setDirty] = useState<Record<string, boolean>>({});
+  const reset = useCallback(() => {
+    _setValue(defaultValue);
+    setDirty(false);
+    setError(undefined);
+  }, [defaultValue]);
 
-  function setValue() {}
-  const controls = {
-    setValue,
-  };
+  const clearError = useCallback(() => setError(undefined), []);
+  const error = useCallback(() => _error, [_error]);
+  const suscribe = useCallback(() => _setMounted(true), []);
+  const unsucribe = useCallback(() => _setMounted(false), []);
 
-  const get = (path: string) => {
-    return getObject(values, path);
-  };
+  const actions = useMemo(() => {
+    return {
+      __type: "fieldlike",
+      get,
+      set,
+      reset,
+      setError,
+      clearError,
+      error,
+      dirty,
+      mounted,
+      suscribe,
+      unsucribe,
+    } satisfies FieldLike<FormLike>;
+  }, [get, set, reset, clearError, error, dirty, mounted, suscribe, unsucribe]);
 
-  const set = (path: string, value: unknown) => {
-    _setValues((prev) => {
-      const newValues = { ...prev };
-      editObject(newValues, path, value);
-      return newValues;
-    });
-  };
-
-  const setDirty = (path: string, value: boolean) => {
-    _setDirty((prev) => {
-      const newDirty = { ...prev };
-      newDirty[path] = value;
-      return newDirty;
-    });
-  };
-
-  const setError = (path: string, error: string | undefined) => {
-    _setErrors((prev) => {
-      const newErrors = { ...prev };
-      newErrors[path] = error;
-      return newErrors;
-    });
-  };
-
-  const reset = (path: string) => {
-    set(path, getObject(options.defaultValues, path));
-    setDirty(path, false);
-  };
-
-  const fields = createFlatProxy<ValueProxy<Form>>((key) => {
-    return createRecursiveProxy(($path, args) => {
-      const fullPath = [key, ...$path];
-      const last = fullPath.pop();
-
-      const actions = {
-        get: () => get(fullPath.join(".")),
-        set: (value: unknown) => {
-          set(fullPath.join("."), value);
-        },
-        reset: () => {
-          reset(fullPath.join("."));
-        },
-        setError: (error: string) => {
-          setError(fullPath.join("."), error);
-        },
-        clearError: () => {
-          setError(fullPath.join("."), undefined);
-        },
-        error: () => errors[fullPath.join(".")],
-        dirty: () => dirty[fullPath.join(".")],
-        setDirty: (value: boolean) => {
-          setDirty(fullPath.join("."), value);
-        },
-      } as Actions<any>;
-
-      (actions[last as keyof typeof actions] as any)(...(args as any[]));
-    });
-  });
-
-  return [values, fields] as const;
+  return actions;
 }
 
-const schema = z.object({
-  name: z.string(),
-  age: z.number(),
-  address: z.object({
-    city: z.string(),
-    street: z.string(),
-  }),
-});
+/***    Formlike     ***/
+export type FormLike = NesteableRecord<FieldLikeAny>;
 
-type Contact = {
-  name: string | undefined;
-  age: number | null;
-  gender: "male" | "female";
-  categories: string[];
-  address: {
-    city: string;
-    street?: string;
-    postalCode: number;
-  };
+export type FormLikeValue<TForm extends FormLike> = Prettify<{
+  [K in keyof TForm]: TForm[K] extends FieldLikeAny
+    ? ReturnType<TForm[K]["get"]>
+    : TForm[K] extends FormLike
+    ? FormLikeValue<TForm[K]>
+    : never;
+}>;
+
+// type FormOptions<TForm extends FormLike> = {
+//   schema?: z.ZodType;
+// };
+
+export type ReturnFormLike<TForm extends FormLike> = {
+  __type: "formlike";
+  form: TForm;
+  get: () => FormLikeValue<TForm>;
+  reset: () => void;
+  validate: (cb?: (value: FormLikeValue<TForm>) => void) => boolean;
+  errors: Record<string, string>;
 };
 
-/* PROHIBIDO:
- *  - Valores opcionales no primitivos (no objetos, no arrays)
- *  - Arrays de valores no primitivos (no objetos, no arrays)
- */
-const [contact, control] = useFormlike<Contact>({
-  schema,
-  defaultValues: {
-    name: undefined,
-    categories: [],
-    age: null,
-    gender: "female",
-    address: {
-      city: "Tel Aviv",
-      street: "Rothschild",
-      postalCode: 123,
+export function useFormLike<TForm extends FormLike, TSchema extends z.ZodType>(options: {
+  form: TForm;
+  schema: TSchema;
+  onValid?: (value: z.infer<TSchema>) => void;
+  onError?: (_errors: Record<string, string>) => void;
+}): ReturnFormLike<TForm> {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const get = useCallback(() => {
+    return _get(options.form);
+  }, [options.form]);
+
+  const reset = useCallback(() => {
+    return _reset(options.form);
+  }, [options.form]);
+
+  const validate = useCallback(
+    (cb?: (value: z.infer<TSchema>) => void) => {
+      const schema = options.schema;
+      if (!schema) return false;
+      try {
+        const value = get();
+        const res = schema.parse(value) as z.infer<TSchema>;
+        setErrors({});
+        cb?.(res);
+        options.onValid?.(res);
+        return true;
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          setErrors(error.errors.reduce((acc, error) => ({ ...acc, [error.path.join(".")]: error.message }), {}));
+        }
+        options.onError?.(errors);
+        return false;
+      }
     },
-  },
-});
+    [errors, get, options]
+  );
 
-contact.age;
+  return useMemo(() => {
+    return {
+      __type: "formlike",
+      form: options.form,
+      get,
+      reset,
+      validate,
+      errors,
+    };
+  }, [errors, get, options.form, reset, validate]);
+}
 
-control.address.postalCode.set(123);
-const city = control.address.city.get();
-const street = control.address.street?.set("test");
-control.categories[0]?.set("a");
-control.categories[0]?.get();
-control.age.get();
+function _get<TForm extends FormLike>(form: TForm): FormLikeValue<TForm> {
+  if ("get" in form && typeof form.get === "function") {
+    return (form as unknown as FieldLikeAny).get() as never;
+  }
+  return Object.keys(form).reduce((acc, key) => {
+    acc[key] = _get(form[key] as FormLike);
+    return acc;
+  }, {} as Record<string, unknown>) as FormLikeValue<TForm>;
+}
+
+function _reset<TForm extends FormLike>(form: TForm) {
+  if ("reset" in form && typeof form.get === "function") {
+    return (form as unknown as FieldLikeAny).reset();
+  }
+  Object.keys(form).forEach((acc, key) => {
+    _reset(form[key] as FormLike);
+  });
+}
+
+/* FORM:
+ *  - get all field errors (as get)
+ *  - get all unmounted fields errors (as get)
+ *
+ * FIELD:
+ *  - debugger function
+ */
