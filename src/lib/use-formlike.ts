@@ -1,4 +1,5 @@
 import { type SetStateAction, useCallback, useState, useMemo, useEffect } from "react";
+import { createContext, useContextSelector } from "use-context-selector";
 import { z } from "zod";
 
 /***   Utility Types   ***/
@@ -9,6 +10,15 @@ type NesteableRecord<T> = {
   [x: string]: T | NesteableRecord<T>;
 };
 
+/***   Context   ***/
+export function createFormLikeContext<T extends FormLikeAny>() {
+  const context = createContext<FormLike<T>>(null as never);
+  function useFormLikeContext<Selected>(selector: (value: FormLike<T>) => Selected): Selected {
+    return useContextSelector(context, selector);
+  }
+  return [context, useFormLikeContext] as const;
+}
+
 /***    Fieldlike     ***/
 export type FieldLike<T> = {
   __type: "fieldlike";
@@ -17,11 +27,11 @@ export type FieldLike<T> = {
   reset: () => void;
   setError: (error: string | undefined) => void;
   clearError: () => void;
-  error: () => string | undefined;
-  dirty: boolean;
-  mounted: boolean;
-  suscribe: () => void;
-  unsucribe: () => void;
+  error: string | undefined;
+  isDirty: boolean;
+  isMounted: boolean;
+  mount: () => void;
+  unmount: () => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,18 +40,18 @@ export type FieldLikeAny = FieldLike<any>;
 export function useFieldLike<FormLike>(_defaultValue: FormLike) {
   const [defaultValue, setDefaultValue] = useState(_defaultValue);
   const [value, _setValue] = useState(defaultValue);
-  const [_error, setError] = useState<string>();
-  const [dirty, setDirty] = useState(false);
-  const [mounted, _setMounted] = useState(false);
+  const [error, setError] = useState<string>();
+  const [isDirty, setDirty] = useState(false);
+  const [isMounted, _setMounted] = useState(false);
 
   useEffect(() => {
     if (JSON.stringify(defaultValue) !== JSON.stringify(_defaultValue)) {
       setDefaultValue(_defaultValue);
-      if (!dirty) {
+      if (!isDirty) {
         _setValue(_defaultValue);
       }
     }
-  }, [_defaultValue, defaultValue, dirty]);
+  }, [_defaultValue, defaultValue, isDirty]);
 
   const get = useCallback(() => value, [value]);
 
@@ -57,9 +67,8 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
   }, [defaultValue]);
 
   const clearError = useCallback(() => setError(undefined), []);
-  const error = useCallback(() => _error, [_error]);
-  const suscribe = useCallback(() => _setMounted(true), []);
-  const unsucribe = useCallback(() => _setMounted(false), []);
+  const mount = useCallback(() => _setMounted(true), []);
+  const unmount = useCallback(() => _setMounted(false), []);
 
   const actions = useMemo(() => {
     return {
@@ -70,50 +79,64 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
       setError,
       clearError,
       error,
-      dirty,
-      mounted,
-      suscribe,
-      unsucribe,
+      isDirty,
+      isMounted,
+      mount,
+      unmount,
     } satisfies FieldLike<FormLike>;
-  }, [get, set, reset, clearError, error, dirty, mounted, suscribe, unsucribe]);
+  }, [get, set, reset, clearError, error, isDirty, isMounted, mount, unmount]);
 
   return actions;
 }
 
 /***    Formlike     ***/
-export type FormLike = NesteableRecord<FieldLikeAny>;
+export type FormLikeAny = NesteableRecord<FieldLikeAny>;
 
-export type FormLikeValue<TForm extends FormLike> = Prettify<{
+export type FormLikeValue<TForm extends FormLikeAny> = Prettify<{
   [K in keyof TForm]: TForm[K] extends FieldLikeAny
     ? ReturnType<TForm[K]["get"]>
-    : TForm[K] extends FormLike
+    : TForm[K] extends FormLikeAny
     ? FormLikeValue<TForm[K]>
     : never;
 }>;
 
-// type FormOptions<TForm extends FormLike> = {
-//   schema?: z.ZodType;
-// };
+export type FormLikeFieldError<TForm extends FormLikeAny> = Prettify<{
+  [K in keyof TForm]: TForm[K] extends FieldLikeAny
+    ? TForm[K]["error"]
+    : TForm[K] extends FormLikeAny
+    ? FormLikeValue<TForm[K]>
+    : never;
+}>;
 
-export type ReturnFormLike<TForm extends FormLike> = {
+export type FormLike<TForm extends FormLikeAny> = {
   __type: "formlike";
   form: TForm;
   get: () => FormLikeValue<TForm>;
+  getFieldErrors: () => Record<string, string | undefined>;
+  getUnmountedErrors: () => Record<string, string | undefined>;
   reset: () => void;
   validate: (cb?: (value: FormLikeValue<TForm>) => void) => boolean;
   errors: Record<string, string>;
 };
 
-export function useFormLike<TForm extends FormLike, TSchema extends z.ZodType>(options: {
+export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType>(options: {
   form: TForm;
   schema: TSchema;
   onValid?: (value: z.infer<TSchema>) => void;
   onError?: (_errors: Record<string, string>) => void;
-}): ReturnFormLike<TForm> {
+}): FormLike<TForm> {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const get = useCallback(() => {
     return _get(options.form);
+  }, [options.form]);
+
+  const getFieldErrors = useCallback(() => {
+    return flattenObject(_fieldErrors(options.form)) as Record<string, string | undefined>;
+  }, [options.form]);
+
+  const getUnmountedErrors = useCallback(() => {
+    return flattenObject(_unmountedFieldErrors(options.form)) as Record<string, string | undefined>;
   }, [options.form]);
 
   const reset = useCallback(() => {
@@ -146,37 +169,73 @@ export function useFormLike<TForm extends FormLike, TSchema extends z.ZodType>(o
     return {
       __type: "formlike",
       form: options.form,
+      getFieldErrors,
+      getUnmountedErrors,
       get,
       reset,
       validate,
       errors,
-    };
-  }, [errors, get, options.form, reset, validate]);
+    } satisfies FormLike<TForm>;
+  }, [options.form, getFieldErrors, getUnmountedErrors, get, reset, validate, errors]);
 }
 
-function _get<TForm extends FormLike>(form: TForm): FormLikeValue<TForm> {
+function _get<TForm extends FormLikeAny>(form: TForm): FormLikeValue<TForm> {
   if ("get" in form && typeof form.get === "function") {
     return (form as unknown as FieldLikeAny).get() as never;
   }
   return Object.keys(form).reduce((acc, key) => {
-    acc[key] = _get(form[key] as FormLike);
+    acc[key] = _get(form[key] as never);
     return acc;
   }, {} as Record<string, unknown>) as FormLikeValue<TForm>;
 }
 
-function _reset<TForm extends FormLike>(form: TForm) {
-  if ("reset" in form && typeof form.get === "function") {
+function _fieldErrors<TForm extends FormLikeAny>(form: TForm): FormLikeFieldError<TForm> {
+  if ("error" in form) {
+    return (form as unknown as FieldLikeAny).error as never;
+  }
+  return Object.keys(form).reduce((acc, key) => {
+    acc[key] = _fieldErrors(form[key] as never);
+    return acc;
+  }, {} as Record<string, unknown>) as FormLikeFieldError<TForm>;
+}
+
+function _unmountedFieldErrors<TForm extends FormLikeAny>(form: TForm): FormLikeFieldError<TForm> {
+  if ("error" in form && "isMounted" in form) {
+    if (form.isMounted) return undefined as never;
+    return (form as unknown as FieldLikeAny).error as never;
+  }
+  return Object.keys(form).reduce((acc, key) => {
+    const recError = _unmountedFieldErrors(form[key] as never);
+    if (recError) acc[key] = recError;
+    return acc;
+  }, {} as Record<string, unknown>) as FormLikeFieldError<TForm>;
+}
+
+function _reset<TForm extends FormLikeAny>(form: TForm) {
+  if ("reset" in form && typeof form.reset === "function") {
     return (form as unknown as FieldLikeAny).reset();
   }
-  Object.keys(form).forEach((acc, key) => {
-    _reset(form[key] as FormLike);
+  Object.keys(form).forEach((key) => {
+    _reset(form[key] as never);
   });
 }
 
-/* FORM:
- *  - get all field errors (as get)
- *  - get all unmounted fields errors (as get)
- *
- * FIELD:
- *  - debugger function
- */
+const isObjectOrArray = (val: unknown) => {
+  const toStringVal = Object.prototype.toString.call(val);
+  return ["[object Object]", "[object Array]"].includes(toStringVal);
+};
+
+type GenericObject = Record<string, unknown>;
+export const flattenObject = (obj: GenericObject, roots = []) => {
+  const keys = Object.keys(obj);
+
+  return keys.reduce((memo, prop) => {
+    const isNested = isObjectOrArray(obj[prop]);
+
+    const newRoots: GenericObject = isNested
+      ? flattenObject(obj[prop] as GenericObject, roots.concat([prop as never]))
+      : { [roots.concat([prop as never]).join(".")]: obj[prop] };
+
+    return Object.assign({}, memo, newRoots);
+  }, {} as GenericObject);
+};
