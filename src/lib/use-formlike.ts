@@ -10,6 +10,16 @@ type NesteableRecord<T> = {
   [x: string]: T | NesteableRecord<T>;
 };
 
+export type GetPaths<TObj extends GenericObject> = {
+  [TKey in keyof TObj]: TKey extends string
+    ? TObj[TKey] extends FieldLikeAny
+      ? `${TKey}`
+      : TObj[TKey] extends GenericObject
+      ? `${TKey}.${GetPaths<TObj[TKey]>}`
+      : never
+    : never;
+}[keyof TObj];
+
 /***   Context   ***/
 export function createFormLikeContext<T extends FormLikeAny>() {
   const context = createContext<FormLike<T>>(null as never);
@@ -112,20 +122,20 @@ export type FormLike<TForm extends FormLikeAny> = {
   __type: "formlike";
   form: TForm;
   get: () => FormLikeValue<TForm>;
-  getFieldErrors: () => Record<string, string | undefined>;
-  getUnmountedErrors: () => Record<string, string | undefined>;
+  getFieldErrors: () => Record<GetPaths<TForm>, string | undefined>;
+  getUnmountedErrors: () => Record<GetPaths<TForm>, string | undefined>;
   reset: () => void;
   validate: (cb?: (value: FormLikeValue<TForm>) => void) => boolean;
-  errors: Record<string, string>;
+  errors: Record<GetPaths<TForm>, string | undefined>;
 };
 
 export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType>(options: {
   form: TForm;
   schema: TSchema;
   onValid?: (value: z.infer<TSchema>) => void;
-  onError?: (_errors: Record<string, string>) => void;
+  onError?: (_errors: Record<GetPaths<TForm>, string | undefined>) => void;
 }): FormLike<TForm> {
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<GetPaths<TForm>, string | undefined>>({} as never);
 
   const get = useCallback(() => {
     return _get(options.form);
@@ -150,13 +160,15 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
       try {
         const value = get();
         const res = schema.parse(value) as z.infer<TSchema>;
-        setErrors({});
+        setErrors({} as never);
         cb?.(res);
         options.onValid?.(res);
         return true;
       } catch (error) {
         if (error instanceof z.ZodError) {
-          setErrors(error.errors.reduce((acc, error) => ({ ...acc, [error.path.join(".")]: error.message }), {}));
+          setErrors(
+            error.errors.reduce((acc, error) => ({ ...acc, [error.path.join(".")]: error.message }), {}) as never
+          );
         }
         options.onError?.(errors);
         return false;
