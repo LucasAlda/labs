@@ -1,4 +1,11 @@
-import { useFieldLike, type FieldLike, createFormLikeContext, useFormLike, type FormLike } from "@/lib/use-formlike";
+import { Input } from "@/formlike/components";
+import {
+  useFieldLike,
+  type FieldLike,
+  createFormLikeContext,
+  useFormLike,
+  type FormLike,
+} from "@/formlike/use-formlike";
 import { memo } from "react";
 import { z } from "zod";
 
@@ -30,7 +37,7 @@ type Contact = {
   };
 };
 
-const [contactCtx, useContactCtx] = createFormLikeContext<Contact>();
+const [ContactForm, useContactCtx] = createFormLikeContext<Contact>();
 
 export default function Page() {
   const contact = useFormLike({
@@ -48,12 +55,12 @@ export default function Page() {
       },
     },
     schema,
-    onValid: (value) => console.log(value),
+    onValid: (value) => console.log({ value }),
     onError: (errors) => console.log(errors),
   }) satisfies FormLike<Contact>;
 
   return (
-    <contactCtx.Provider value={contact}>
+    <ContactForm value={contact}>
       <div className="h-screen w-screen bg-slate-100">
         <div className="grid grid-cols-4 flex-wrap items-start justify-start gap-4 p-4">
           <div className="row-span-6 space-y-4">
@@ -67,9 +74,10 @@ export default function Page() {
           <PhoneInput />
           <AddressInput />
           <Validate />
+          <GenericInput field={contact.form.name} />
         </div>
       </div>
-    </contactCtx.Provider>
+    </ContactForm>
   );
 }
 
@@ -177,7 +185,27 @@ const PhoneInput = memo(function PhoneInput() {
 
   return (
     <Card title="Phone Editor">
+      <Input className="block rounded border border-slate-300 p-1 px-2" field={phone} />
       <input className="block rounded border border-slate-300 p-1 px-2" onChange={handleChange} value={phone.get()} />
+    </Card>
+  );
+});
+
+const GenericInput = memo(function PhoneInput({
+  field,
+  title,
+}: {
+  field: FieldLike<string | undefined>;
+  title?: string;
+}) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    field.set(e.target.value);
+    field.setError(e.target.value.length > 10 ? "Phone number is too long" : undefined);
+  }
+
+  return (
+    <Card title={title ?? ""}>
+      <input className="block rounded border border-slate-300 p-1 px-2" onChange={handleChange} value={field.get()} />
     </Card>
   );
 });

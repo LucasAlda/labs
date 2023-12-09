@@ -26,7 +26,7 @@ export function createFormLikeContext<T extends FormLikeAny>() {
   function useFormLikeContext<Selected>(selector: (value: FormLike<T>) => Selected): Selected {
     return useContextSelector(context, selector);
   }
-  return [context, useFormLikeContext] as const;
+  return [context.Provider, useFormLikeContext] as const;
 }
 
 /***    Fieldlike     ***/

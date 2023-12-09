@@ -53,9 +53,7 @@ const TableHead = memo(function TableHead({ children, condensed, rounded }: Tabl
   const ctx = useTableContext();
   return (
     <TableContext.Provider value={{ condensed: condensed ?? ctx.condensed, rounded: rounded ?? ctx.rounded }}>
-      <thead>
-        <tr className="overflow-hidden">{children}</tr>
-      </thead>
+      <thead>{children}</thead>
     </TableContext.Provider>
   );
 });
@@ -100,6 +98,7 @@ export type TableColumnProps = TableContextType &
     order?: "desc" | "asc" | "none";
     className?: string;
     thProps?: Omit<HTMLProps<HTMLTableCellElement>, "className">;
+    colSpan?: number;
   };
 const TableColumn = memo(function TableColumn({
   children,
@@ -109,6 +108,7 @@ const TableColumn = memo(function TableColumn({
   isDate,
   isNumber,
   rounded,
+  colSpan,
   ...rest
 }: TableColumnProps) {
   const ctx = useTableContext();
@@ -121,7 +121,7 @@ const TableColumn = memo(function TableColumn({
   };
 
   return (
-    <th className={columnVariants({ ...variants, className })} {...rest} {...thProps}>
+    <th className={columnVariants({ ...variants, className })} {...rest} colSpan={colSpan} {...thProps}>
       {children}
     </th>
   );
@@ -338,7 +338,7 @@ const containerToTableVariant = {
   island: "perimeter",
   narrow: "none",
 } as const;
-type TableCardProps = {
+export type TableCardProps = {
   children: ReactNode;
   className?: string;
 } & VariantProps<typeof containerVariants>;

@@ -1,15 +1,6 @@
-import { Table, TableRowProps, rowVariants, useTableRowContext } from "@/lib/table";
-import { VariantProps } from "class-variance-authority";
-import {
-  Children,
-  createContext,
-  type ComponentPropsWithoutRef,
-  type ReactNode,
-  useState,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react";
+import { Table, type TableRowProps, type rowVariants, useTableRowContext } from "@/lib/table";
+import { type VariantProps } from "class-variance-authority";
+import { Children, createContext, type ReactNode, useState, useContext, useEffect, useMemo } from "react";
 
 type DataTableContext = {
   columns: ColumnProps[];
@@ -59,16 +50,18 @@ function DataTableColumns({ children }: { children: ReactNode; title?: string })
   return (
     <>
       <Table.Head>
-        {columns.map((col) => (
-          <ColumnHeader key={col.accessor} {...col} />
-        ))}
+        <tr>
+          {columns.map((col) => (
+            <ColumnHeader key={col.accessor} {...col} />
+          ))}
+        </tr>
       </Table.Head>
       {(ctx.render === "columns" || ctx.render === "auto") && (
         <Table.Body>
-          {ctx.table.rows.map(({ row, variant }) => (
-            <DataTableRow row={row} variant={variant as never}>
-              {columns.map((col) => (
-                <ColumnBody {...col} />
+          {ctx.table.rows.map(({ row, variant }, i) => (
+            <DataTableRow key={i} row={row} variant={variant as never}>
+              {columns.map((col, j) => (
+                <ColumnBody key={j} {...col} />
               ))}
             </DataTableRow>
           ))}
@@ -145,12 +138,13 @@ export const DataTable = {
 
 export const useTable = <
   TRow extends Record<string, unknown>,
-  TFilters extends {
-    [k: string]: {
+  TFilters extends Record<
+    string,
+    {
       value: string;
       filterFunc: (filter: string, row: TRow, variant: NonNullable<TableRowProps["variant"]>) => boolean;
-    };
-  }
+    }
+  >
 >(props: {
   tableId: string;
   rows: TRow[] | undefined;
@@ -160,7 +154,7 @@ export const useTable = <
 }) => {
   const filteredRows = useMemo(
     () =>
-      (props.rows || [])
+      (props.rows ?? [])
         .map((row) => {
           const variant = (Object.entries(props.rowVariant ?? {}).find(([, fn]) => fn(row))?.[0] ??
             "none") as NonNullable<TableRowProps["variant"]>;
