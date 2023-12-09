@@ -1,7 +1,6 @@
-import { ArrowDown, ArrowUp, EyeOff } from "lucide-react";
+import { ArrowDown, ArrowLeftRight, ArrowUp, EyeOff } from "lucide-react";
 import { type Column } from "@tanstack/react-table";
 
-import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,10 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   column?: Column<TData, TValue>;
   title: string;
+  sortIconPlace?: "left-full" | "right-full";
 }
 
 // --muted-foreground: 240 3.8% 46.1%;
@@ -22,7 +23,7 @@ interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes
 export function DataTableColumnHeader<TData, TValue>({
   column,
   title,
-  className,
+  sortIconPlace,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   return (
     <>
@@ -31,14 +32,19 @@ export function DataTableColumnHeader<TData, TValue>({
           <Button
             variant="ghost"
             size="sm"
-            className="-mx-2 -my-0.5 h-7 w-full focus-visible:ring-0 data-[state=open]:bg-slate-200"
+            style={{ textAlign: "inherit" }}
+            className="-mx-2 -my-0.5 block h-7 w-[calc(100%+1rem)] px-2 focus-visible:ring-0 data-[state=open]:bg-slate-200"
           >
-            <span>{title}</span>
-            {column?.getIsSorted() === "desc" ? (
-              <ArrowDown className="ml-2 h-4 w-4" />
-            ) : column?.getIsSorted() === "asc" ? (
-              <ArrowUp className="ml-2 h-4 w-4" />
-            ) : null}
+            <span className="relative">
+              {title}
+              <span className={cn("absolute", sortIconPlace)}>
+                {column?.getIsSorted() === "desc" ? (
+                  <ArrowDown className="mx-2 h-4 w-4" />
+                ) : column?.getIsSorted() === "asc" ? (
+                  <ArrowUp className="mx-2 h-4 w-4" />
+                ) : null}
+              </span>
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -52,12 +58,16 @@ export function DataTableColumnHeader<TData, TValue>({
                 <ArrowDown className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
                 Desc
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => column.clearSorting()}>
+                <ArrowLeftRight className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
+                No ord.
+              </DropdownMenuItem>
             </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => column?.toggleVisibility(false)}>
             <EyeOff className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
-            Hide
+            Ocultar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
