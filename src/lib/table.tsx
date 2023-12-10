@@ -355,7 +355,7 @@ const TableContainerHeader = ({ children, className }: { children: ReactNode; cl
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 px-2 pb-2.5 sm:px-0",
+        "flex items-center justify-between gap-2 px-2 pb-2.5 sm:px-0 lg:gap-4",
         { "sm:px-3": ctx.rounded === "none" },
         className
       )}

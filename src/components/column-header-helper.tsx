@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   column?: Column<TData, TValue>;
   title: string;
-  sortIconPlace?: "left-full" | "right-full";
+  labelPlace?: "center" | "right" | "left";
 }
 
 // --muted-foreground: 240 3.8% 46.1%;
@@ -23,7 +23,7 @@ interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes
 export function DataTableColumnHeader<TData, TValue>({
   column,
   title,
-  sortIconPlace,
+  labelPlace,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   return (
     <>
@@ -37,7 +37,7 @@ export function DataTableColumnHeader<TData, TValue>({
           >
             <span className="relative">
               {title}
-              <span className={cn("absolute", sortIconPlace)}>
+              <span className={cn("absolute", labelPlace === "right" ? "right-full" : "left-full")}>
                 {column?.getIsSorted() === "desc" ? (
                   <ArrowDown className="mx-2 h-4 w-4" />
                 ) : column?.getIsSorted() === "asc" ? (
@@ -47,7 +47,7 @@ export function DataTableColumnHeader<TData, TValue>({
             </span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent align={labelPlace === "left" ? "start" : labelPlace === "right" ? "end" : "center"}>
           {column?.getCanSort() && (
             <>
               <DropdownMenuItem onClick={() => column.toggleSorting(false)}>

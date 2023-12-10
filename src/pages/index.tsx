@@ -1,4 +1,4 @@
-const data = [
+const DATA = [
   {
     type: "header",
     date: "Cartera Disponible",
@@ -35,7 +35,7 @@ const data = [
     onlyHeader: true,
     subRows: [],
   },
-];
+] as Array<Row & { subRows: Array<Row> }>;
 
 type Row = {
   date: Date | string;
@@ -46,22 +46,34 @@ type Row = {
 };
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTable } from "@/lib/datatable";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Example() {
-  const [table, DataTable] = useTable({
-    data: data as unknown as Row[],
+  const [data, setData] = useState<typeof DATA>();
+
+  useEffect(() => {
+    setTimeout(() => {
+      setData(DATA);
+    }, 2000);
+  }, []);
+
+  const [table, DataTable] = useTable<Array<Row>>({
+    key: "position",
+    data: data,
     sortMinDepth: 1,
+    prerender: false,
   });
   const [counter, setCounter] = useState(0);
 
   return (
     <div className="space-y-16 p-16">
-      <DataTable.Root table={table} variant="narrow">
+      <DataTable.Root table={table} variant="card">
         <DataTable.Header>
           <DataTable.Title>Posicion </DataTable.Title>
+          <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
         <DataTable.Content>
@@ -76,13 +88,14 @@ export default function Example() {
                 </Button>
               )}
             </DataTable.Column>
-            <DataTable.Column accessorAlias="test" label="Acciones" align="center">
+            <DataTable.Column accessor="quantity" label="Acciones" align="center">
               {RowActions}
             </DataTable.Column>
           </DataTable.Rows>
         </DataTable.Content>
+        <DataTable.Loading height="h-60">Cargando Posicion...</DataTable.Loading>
       </DataTable.Root>
-      TEST
+      Test
     </div>
   );
 }
