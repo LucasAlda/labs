@@ -24,6 +24,9 @@ import {
   getSortedRowModel,
   type Table as TTable,
   getFilteredRowModel,
+  getPaginationRowModel,
+  type PaginationState,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
 import { format } from "date-fns";
@@ -55,36 +58,47 @@ function useLocalStorage<T>(key: string, defaultValue: T) {
       defaultValue
   );
 
-  function changeValue(value: T | ((old: T) => T), save = true) {
-    setValue((prev) => {
-      const newVal = typeof value === "function" ? (value as (old: T) => T)(prev) : value;
-      console.log("newVal", newVal);
-      if (save) {
-        window.localStorage.setItem(key, JSON.stringify(newVal));
-        setChanged(false);
-      } else {
-        setChanged(true);
-      }
+  const changeValue = useCallback(
+    function changeValue(value: T | ((old: T) => T), save = true) {
+      setValue((prev) => {
+        const newVal = typeof value === "function" ? (value as (old: T) => T)(prev) : value;
+        console.log("newVal", newVal);
+        if (save) {
+          window.localStorage.setItem(key, JSON.stringify(newVal));
+          setChanged(false);
+        } else {
+          setChanged(true);
+        }
 
-      return newVal;
-    });
-  }
+        return newVal;
+      });
+    },
+    [key]
+  );
   return [value, changeValue, changed] as const;
 }
 
+const emptyArray: Array<Record<string, unknown>> = [];
 export function useTable<T extends Array<Record<string, unknown>>>({
   key,
   data,
   sortMinDepth = 0,
   prerender = true,
+  pagination,
 }: {
   key: string;
   data: T | undefined;
   sortMinDepth?: number;
   prerender?: boolean;
+  pagination?: number;
 }) {
+  const [selected, setSelected] = useState<RowSelectionState>({});
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [paginationState, setPaginationState] = useState<PaginationState>(() => ({
+    pageSize: pagination ?? 10000,
+    pageIndex: 0,
+  }));
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>(true);
   const [order, setOrder, orderChanged] = useLocalStorage<string[]>(`table_order_${key}`, []);
@@ -93,10 +107,10 @@ export function useTable<T extends Array<Record<string, unknown>>>({
     {}
   );
 
-  function saveView() {
+  const saveView = useCallback(() => {
     setColumnVisibility(columnVisibility, true);
     setOrder(order, true);
-  }
+  }, [columnVisibility, order, setColumnVisibility, setOrder]);
 
   const autoDepthSort = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,27 +136,36 @@ export function useTable<T extends Array<Record<string, unknown>>>({
   );
 
   const table = useReactTable({
-    data: data ?? [],
+    data: data ?? emptyArray,
     columns: tanstackColumns,
     state: {
       sorting,
       columnVisibility,
       expanded,
+      pagination: paginationState,
+      rowSelection: selected,
     },
     onGlobalFilterChange: setGlobalFilter,
     onExpandedChange: setExpanded,
     getExpandedRowModel: getExpandedRowModel(),
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    getSubRows: (row) => row.subRows as Record<string, unknown>[],
+    onPaginationChange: setPaginationState,
+    getSubRows: useCallback((row: Record<string, unknown>) => row.subRows, []) as never,
     onColumnVisibilityChange: (v) => setColumnVisibility(v, false),
+    onRowSelectionChange: setSelected,
+    enableRowSelection: true,
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     sortingFns: {
       auto: autoDepthSort,
     },
     getSortedRowModel: getSortedRowModel(),
   });
+
+  const getSelected = useCallback(() => {
+    return table.getSelectedRowModel().flatRows.map((row) => row.original);
+  }, [table]);
 
   type DateTable = Omit<typeof DataTable, "Column" | "Rows"> & {
     Rows: (
@@ -154,29 +177,50 @@ export function useTable<T extends Array<Record<string, unknown>>>({
       props: Omit<ColumnProps, "accessor" | "accessorAlias" | "children"> & {
         children?:
           | ReactNode
-          | ((props: { row: GetRow<T>; variant: VariantProps<typeof rowVariants>["variant"] }) => ReactNode);
+          | ((props: {
+              row: GetRow<T>;
+              controller: Row<GetRow<T>>;
+              variant: VariantProps<typeof rowVariants>["variant"];
+            }) => ReactNode);
       } & ({ accessor: keyof GetRow<T> } | { accessorAlias: string })
     ) => null;
   };
 
-  return [
-    {
-      table,
-      setColumns,
-      columns,
+  const returnValue = useMemo(
+    () =>
+      ({
+        table,
+        setColumns,
+        columns,
+        columnVisibility,
+        saveView,
+        order,
+        setOrder,
+        prerender,
+        getSelected,
+        isEmpty: data?.length === 0,
+        isLoading: data === undefined,
+        viewChanged: visibilityChanged || orderChanged,
+        globalFilter,
+        setGlobalFilter,
+      } satisfies UseTable),
+    [
       columnVisibility,
-      saveView,
-      order,
-      setOrder,
-      prerender,
-      isEmpty: data?.length === 0,
-      isLoading: data === undefined,
-      viewChanged: visibilityChanged || orderChanged,
+      columns,
+      data,
+      getSelected,
       globalFilter,
-      setGlobalFilter,
-    } satisfies UseTable,
-    DataTable as DateTable,
-  ] as const;
+      order,
+      orderChanged,
+      prerender,
+      saveView,
+      setOrder,
+      table,
+      visibilityChanged,
+    ]
+  );
+
+  return [returnValue, DataTable as DateTable] as const;
 }
 
 type UseTable = {
@@ -189,6 +233,7 @@ type UseTable = {
   order: string[] | undefined;
   saveView: () => void;
   setOrder: (value: string[], save?: boolean) => void;
+  getSelected: () => Record<string, unknown>[];
   prerender?: boolean;
   isEmpty: boolean;
   isLoading: boolean;
@@ -229,8 +274,12 @@ type ColumnProps = {
   label: string;
   children?:
     | ReactNode
-    | ((props: { row: Record<string, unknown>; variant: VariantProps<typeof rowVariants>["variant"] }) => ReactNode);
-  expandable?: boolean;
+    | ((props: {
+        row: Record<string, unknown>;
+        controller: Row<Record<string, unknown>>;
+        variant: VariantProps<typeof rowVariants>["variant"];
+      }) => ReactNode);
+  collapsable?: boolean;
 } & ({ accessor: string } | { accessorAlias: string });
 
 function Column(props: ColumnProps) {
@@ -238,11 +287,11 @@ function Column(props: ColumnProps) {
   return null;
 }
 
-function ColumnBody({ expandable, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
+function ColumnBody({ collapsable, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
   const tableRowctx = useTableRowContext();
   const children =
     typeof props.children === "function"
-      ? props.children({ row: props.row.original, variant: tableRowctx.variant ?? "none" })
+      ? props.children({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })
       : props.children;
 
   const accessor = "accessor" in props ? props.accessor : props.accessorAlias;
@@ -252,7 +301,7 @@ function ColumnBody({ expandable, ...props }: ColumnProps & { row: Row<Record<st
     props = { accessor, ...rest };
   }
 
-  if (expandable && props.row.getCanExpand()) {
+  if (collapsable && props.row.getCanExpand()) {
     return (
       <Table.Cell {...props}>
         {children ?? (props.row.original[accessor] as ReactNode)}
@@ -312,9 +361,8 @@ export type RowsProps = {
   variant?: (row: Record<string, unknown>) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
   };
-  collapsable?: boolean;
 };
-function Rows({ children, variant, collapsable }: RowsProps) {
+function Rows({ children, variant }: RowsProps) {
   const table = useTableCtx();
   const tanstackColumns = table.table.getVisibleFlatColumns();
 
@@ -370,7 +418,8 @@ function Rows({ children, variant, collapsable }: RowsProps) {
     <>
       <Table.Head>
         <tr>
-          {Children.map(sortedChildren as never, ({ props }: { props: ColumnProps }) => {
+          {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
+          {Children.map(sortedChildren as never, ({ props: { collapsable, ...props } }: { props: ColumnProps }) => {
             const accessor = "accessor" in props ? props.accessor : props.accessorAlias;
             const col = tanstackColumns.find((col) => col.id === accessor);
 
@@ -407,14 +456,14 @@ function Rows({ children, variant, collapsable }: RowsProps) {
 
             return (
               <Table.Row key={row.id} variant={selectedVariant}>
-                {Children.map(sortedChildren as never, ({ props }: { props: ColumnProps }, i) => {
+                {Children.map(sortedChildren as never, ({ props }: { props: ColumnProps }) => {
                   const accessor = "accessor" in props ? props.accessor : props.accessorAlias;
 
                   const cell = cells.find((cell) => cell.column.id === accessor);
 
                   if (table.columns.length > 0 && !cell) return null;
 
-                  return <ColumnBody {...props} row={row} expandable={collapsable && row.getCanExpand() && i === 0} />;
+                  return <ColumnBody {...props} row={row} />;
                 })}
               </Table.Row>
             );
@@ -440,6 +489,22 @@ function Loading({ children, height, className }: { children?: ReactNode; height
   );
 }
 
+function Empty({ children, height, className }: { children?: ReactNode; height?: string; className?: string }) {
+  const { isEmpty } = useTableCtx();
+  if (!isEmpty) return null;
+  return (
+    <div
+      className={cn(
+        "flex h-40 flex-col items-center gap-4 pt-16 text-sm font-medium text-slate-500",
+        height,
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export const DataTable = {
   Root: DataTableRoot,
   Header: TableContainer.Header,
@@ -450,4 +515,5 @@ export const DataTable = {
   Rows: Rows,
   Column: Column,
   Loading,
+  Empty,
 };
