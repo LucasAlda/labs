@@ -8,7 +8,7 @@ const stringToPath = function (string: string | number): (string | number)[] {
   }
   string.toString().replace(rePropName, (match: string, ...args: string[]) => {
     const [number, quote, subString] = args;
-    result.push(quote ? subString?.replace(reEscapeChar, "$1") : number || match);
+    result.push(quote ? subString?.replace(reEscapeChar, "$1") : number ?? match);
     return match;
   });
   return result;
