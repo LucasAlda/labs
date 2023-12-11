@@ -438,37 +438,8 @@ function getRowColumns(
 
   if (titleIndex > 0) variantColumns[titleIndex] = firstCol;
 
-  console.log("title", title);
-
   variantColumns.splice(0, firstValue, { ...title, props: { ...title.props, colSpan: firstValue } });
   console.log(variantColumns);
-
-  // [...columns].forEach((col, i) => {
-  //   if (col.props.title) {
-  //     if (firstEmpty) {
-  //       variantColumns.splice(0, 1, {
-  //         ...col,
-  //         props: { ...col.props, colSpan: variantColumns[0]?.props.colSpan },
-  //       });
-  //     }
-  //     colSpan++;
-  //     return;
-  //   }
-  //   const value = row.original[col.accessor];
-  //   if (i === 0 || value || col.props.children) {
-  //     if (i === 0 && !value && !col.props.children) firstEmpty = true;
-
-  //     const lastColumn = variantColumns.at(-1);
-  //     if (lastColumn) lastColumn.props.colSpan = colSpan;
-  //     variantColumns.push({ ...col, props: { ...col.props, colSpan: 1 } });
-  //     colSpan = 1;
-  //   } else {
-  //     colSpan++;
-  //   }
-  // });
-
-  // const lastColumn = variantColumns.at(-1);
-  // if (lastColumn) lastColumn.props.colSpan = colSpan;
 
   return variantColumns;
 }
