@@ -61,15 +61,20 @@ export default function Example() {
     pagination: 20,
   });
 
+  const [condensed, setCondensed] = useState(false);
+
   return (
     <div className="space-y-16 py-16 sm:p-16">
       <DataTable.Root table={table} variant="narrow">
         <DataTable.Header>
           {/* <DataTable.Title>Posicion</DataTable.Title> */}
+          <Button onClick={() => setCondensed((p) => !p)} variant={"outline"} size="sm">
+            condensed
+          </Button>
           <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
-        <DataTable.Content>
+        <DataTable.Content condensed={condensed}>
           <DataTable.Rows
             variant={(row) => ({
               main: row?.category === "header",

@@ -30,7 +30,7 @@ export function DataTableColumnHeader<TData, TValue>({
             variant="ghost"
             size="sm"
             style={{ textAlign: "inherit" }}
-            className="-mx-2 -my-0.5 block h-7 w-[calc(100%+1rem)] px-2 focus-visible:ring-0 data-[state=open]:bg-slate-200"
+            className="-mx-2 -my-1 block h-8 w-[calc(100%+1rem)] px-2  focus-visible:ring-0 data-[state=open]:bg-slate-200 sm:h-7"
           >
             <span className="relative">
               {title}
@@ -50,22 +50,22 @@ export function DataTableColumnHeader<TData, TValue>({
           {column?.getCanSort() && (
             <>
               <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-                <ArrowUp className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
+                <ArrowUp className="mr-2 h-3 w-3 text-slate-600/70" />
                 Asc
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-                <ArrowDown className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
+                <ArrowDown className="mr-2 h-3 w-3 text-slate-600/70" />
                 Desc
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => column.clearSorting()}>
-                <ArrowLeftRight className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
+                <ArrowLeftRight className="mr-2 h-3 w-3 text-slate-600/70" />
                 No ord.
               </DropdownMenuItem>
             </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => column?.toggleVisibility(false)}>
-            <EyeOff className="mr-2 h-3.5 w-3.5 text-slate-600/70" />
+            <EyeOff className="mr-2 h-3 w-3 text-slate-600/70" />
             Ocultar
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -10,7 +10,7 @@ export function ViewOptions() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-auto hidden h-8 bg-white lg:flex">
+        <Button variant="outline" size="sm" className="ml-auto  flex h-8 bg-white">
           <Settings2 className="mr-2 h-4 w-4" />
           Vista
         </Button>

@@ -311,12 +311,7 @@ function ColumnBody({ collapsable, title, ...props }: ColumnProps & { row: Row<R
     return (
       <Table.Cell {...props}>
         {children ?? (props.row.original[accessor] as ReactNode)}
-        <button
-          {...{
-            onClick: props.row.getToggleExpandedHandler(),
-            style: { cursor: "pointer" },
-          }}
-        >
+        <button className="hidden cursor-pointer sm:inline" onClick={() => props.row.toggleExpanded()}>
           {props.row.getIsExpanded() ? (
             <ChevronDown className="-mb-1 ml-1 h-4 w-4 opacity-90" />
           ) : (
@@ -407,7 +402,7 @@ function useColumns(children: ReactNode) {
   });
 
   const title = columnsInfo.find((col) => col.props.title);
-  if (title) title.col = table.table.getColumn(title.accessor);
+  if (title) title.col = table.table.getAllColumns().find((col) => col.id === title.accessor);
 
   const visibleColumns = columnsInfo.filter((col) => col.col?.getIsVisible());
   return [visibleColumns, title] as const;

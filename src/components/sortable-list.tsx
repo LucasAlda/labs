@@ -82,13 +82,13 @@ function SortableColumn(props: { id: string; children: ReactNode }) {
     <div
       ref={setNodeRef}
       className={cn(
-        "relative flex items-center gap-3 rounded-md bg-white  py-0.5 text-sm leading-6 text-slate-700",
-        isDragging && "z-50"
+        "relative -mx-2 flex touch-none items-center gap-3 rounded-md bg-white px-2  py-0.5 text-sm leading-6 text-slate-700",
+        isDragging && "z-50 bg-slate-100 shadow-lg shadow-slate-200"
       )}
       {...attributes}
       style={style}
     >
-      <div {...props} {...listeners} ref={setNodeRef}>
+      <div {...props} {...listeners} className="-mx-1 flex h-6 w-6 items-center justify-center " ref={setNodeRef}>
         <GripHorizontal className="h-4 w-4 text-slate-400/80" />
       </div>
       {props.children}
