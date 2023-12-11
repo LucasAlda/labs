@@ -17,9 +17,6 @@ interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes
   labelPlace?: "center" | "right" | "left";
 }
 
-// --muted-foreground: 240 3.8% 46.1%;
-// --accent: 240 4.8% 95.9%;
-
 export function DataTableColumnHeader<TData, TValue>({
   column,
   title,
@@ -37,13 +34,15 @@ export function DataTableColumnHeader<TData, TValue>({
           >
             <span className="relative">
               {title}
-              <span className={cn("absolute", labelPlace === "right" ? "right-full" : "left-full")}>
-                {column?.getIsSorted() === "desc" ? (
-                  <ArrowDown className="mx-2 h-4 w-4" />
-                ) : column?.getIsSorted() === "asc" ? (
-                  <ArrowUp className="mx-2 h-4 w-4" />
-                ) : null}
-              </span>
+              {column?.getCanSort() && (
+                <span className={cn("absolute", labelPlace === "right" ? "right-full" : "left-full")}>
+                  {column?.getIsSorted() === "desc" ? (
+                    <ArrowDown className="mx-2 h-4 w-4" />
+                  ) : column?.getIsSorted() === "asc" ? (
+                    <ArrowUp className="mx-2 h-4 w-4" />
+                  ) : null}
+                </span>
+              )}
             </span>
           </Button>
         </DropdownMenuTrigger>

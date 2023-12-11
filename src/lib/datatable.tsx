@@ -42,6 +42,7 @@ import {
   useState,
   Children,
   useEffect,
+  startTransition,
 } from "react";
 
 type GetRow<T> = T extends Array<infer K>
@@ -62,7 +63,6 @@ function useLocalStorage<T>(key: string, defaultValue: T) {
     function changeValue(value: T | ((old: T) => T), save = true) {
       setValue((prev) => {
         const newVal = typeof value === "function" ? (value as (old: T) => T)(prev) : value;
-        console.log("newVal", newVal);
         if (save) {
           window.localStorage.setItem(key, JSON.stringify(newVal));
           setChanged(false);
@@ -163,10 +163,6 @@ export function useTable<T extends Array<Record<string, unknown>>>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const getSelected = useCallback(() => {
-    return table.getSelectedRowModel().flatRows.map((row) => row.original);
-  }, [table]);
-
   type DateTable = Omit<typeof DataTable, "Column" | "Rows"> & {
     Rows: (
       props: Omit<RowsProps, "variant"> & {
@@ -197,7 +193,6 @@ export function useTable<T extends Array<Record<string, unknown>>>({
         order,
         setOrder,
         prerender,
-        getSelected,
         isEmpty: data?.length === 0,
         isLoading: data === undefined,
         viewChanged: visibilityChanged || orderChanged,
@@ -208,7 +203,6 @@ export function useTable<T extends Array<Record<string, unknown>>>({
       columnVisibility,
       columns,
       data,
-      getSelected,
       globalFilter,
       order,
       orderChanged,
@@ -233,7 +227,6 @@ type UseTable = {
   order: string[] | undefined;
   saveView: () => void;
   setOrder: (value: string[], save?: boolean) => void;
-  getSelected: () => Record<string, unknown>[];
   prerender?: boolean;
   isEmpty: boolean;
   isLoading: boolean;
@@ -257,10 +250,17 @@ function Title({ children, className }: { children?: ReactNode; className?: stri
 
 function Search({ className }: { className?: string }) {
   const { globalFilter, setGlobalFilter } = useTableCtx();
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    startTransition(() => {
+      setGlobalFilter(e.target.value);
+    });
+  }
+
   return (
     <Input
       value={globalFilter ?? ""}
-      onChange={(e) => setGlobalFilter(e.target.value)}
+      onChange={handleChange}
       placeholder={`Buscar...`}
       className={cn("h-8 w-full max-w-[14rem]", className)}
     />
@@ -280,6 +280,9 @@ type ColumnProps = {
         variant: VariantProps<typeof rowVariants>["variant"];
       }) => ReactNode);
   collapsable?: boolean;
+  sortable?: boolean;
+  colSpan?: number;
+  title?: boolean;
 } & ({ accessor: string } | { accessorAlias: string });
 
 function Column(props: ColumnProps) {
@@ -287,19 +290,22 @@ function Column(props: ColumnProps) {
   return null;
 }
 
-function ColumnBody({ collapsable, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function ColumnBody({ collapsable, title, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
   const tableRowctx = useTableRowContext();
   const children =
     typeof props.children === "function"
       ? props.children({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })
       : props.children;
 
-  const accessor = "accessor" in props ? props.accessor : props.accessorAlias;
+  const accessor = getAccessor(props);
   if ("accessorAlias" in props) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { accessorAlias, ...rest } = props;
     props = { accessor, ...rest };
   }
+
+  delete props.sortable;
 
   if (collapsable && props.row.getCanExpand()) {
     return (
@@ -358,19 +364,118 @@ export function DataTableViewOptions() {
 
 export type RowsProps = {
   children: ReactNode;
+  selectable?: boolean;
   variant?: (row: Record<string, unknown>) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
   };
 };
-function Rows({ children, variant }: RowsProps) {
+
+function getAccessor(column: ColumnProps) {
+  return "accessor" in column ? column.accessor : column.accessorAlias;
+}
+
+function useColumns(children: ReactNode) {
   const table = useTableCtx();
   const tanstackColumns = table.table.getVisibleFlatColumns();
 
   const columns = Children.map(children as never, ({ props }: { props: ColumnProps }) => props);
+
+  // Columns reactivity limited to accessor and accessorAlias;
   useEffect(() => {
     table.setColumns(columns);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns.map((col) => ("accessor" in col ? col.accessor : col.accessorAlias)).join(",")]);
+  }, [columns.map((col) => getAccessor(col)).join(",")]);
+
+  const sortedColumns = columns.sort((a, b) => {
+    const aOrder = table.order?.indexOf(getAccessor(a)) ?? -1;
+    const bOrder = table.order?.indexOf(getAccessor(b)) ?? -1;
+
+    if (aOrder === -1 && bOrder === -1) return 0;
+    if (aOrder === -1) return 1;
+    if (bOrder === -1) return -1;
+    return aOrder - bOrder;
+  });
+
+  const columnsInfo = sortedColumns.map((props) => {
+    const accessor = getAccessor(props);
+    const col = tanstackColumns.find((col) => col.id === accessor);
+    return {
+      accessor,
+      props,
+      col,
+    };
+  });
+
+  const title = columnsInfo.find((col) => col.props.title);
+  if (title) title.col = table.table.getColumn(title.accessor);
+
+  const visibleColumns = columnsInfo.filter((col) => col.col?.getIsVisible());
+  return [visibleColumns, title] as const;
+}
+
+function getRowColumns(
+  columns: ReturnType<typeof useColumns>[0],
+  row: Row<Record<string, unknown>>,
+  variant: string,
+  title: ReturnType<typeof useColumns>[1]
+) {
+  if (variant === "none") return columns;
+  if (!title) return columns;
+
+  const titleIndex = columns.findIndex((col) => col.props.title);
+
+  const firstValue = columns.findIndex((col) => {
+    const value = row.original[col.accessor];
+    if (col.props.title) return false;
+
+    return value || col.props.children;
+  });
+
+  if (firstValue < 1) return columns;
+
+  const variantColumns: typeof columns = [...columns];
+  const firstCol = variantColumns[0]!;
+
+  if (titleIndex > 0) variantColumns[titleIndex] = firstCol;
+
+  console.log("title", title);
+
+  variantColumns.splice(0, firstValue, { ...title, props: { ...title.props, colSpan: firstValue } });
+  console.log(variantColumns);
+
+  // [...columns].forEach((col, i) => {
+  //   if (col.props.title) {
+  //     if (firstEmpty) {
+  //       variantColumns.splice(0, 1, {
+  //         ...col,
+  //         props: { ...col.props, colSpan: variantColumns[0]?.props.colSpan },
+  //       });
+  //     }
+  //     colSpan++;
+  //     return;
+  //   }
+  //   const value = row.original[col.accessor];
+  //   if (i === 0 || value || col.props.children) {
+  //     if (i === 0 && !value && !col.props.children) firstEmpty = true;
+
+  //     const lastColumn = variantColumns.at(-1);
+  //     if (lastColumn) lastColumn.props.colSpan = colSpan;
+  //     variantColumns.push({ ...col, props: { ...col.props, colSpan: 1 } });
+  //     colSpan = 1;
+  //   } else {
+  //     colSpan++;
+  //   }
+  // });
+
+  // const lastColumn = variantColumns.at(-1);
+  // if (lastColumn) lastColumn.props.colSpan = colSpan;
+
+  return variantColumns;
+}
+
+function Rows({ children, selectable = false, variant }: RowsProps) {
+  const table = useTableCtx();
+  const [columns, title] = useColumns(children);
 
   const globalFilterFn = useCallback(
     (row: Row<Record<string, unknown>>) => {
@@ -402,34 +507,22 @@ function Rows({ children, variant }: RowsProps) {
   if (!table.prerender && table.columns.length === 0) return null;
   if (table.isLoading || table.isEmpty) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sortedChildren = Children.toArray(children).sort((a: any, b: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-    const aOrder = table.order?.indexOf("accessor" in a.props ? a.props.accessor : a.props.accessorAlias) ?? -1;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-    const bOrder = table.order?.indexOf("accessor" in b.props ? b.props.accessor : b.props.accessorAlias) ?? -1;
-
-    if (aOrder === -1 && bOrder === -1) return 0;
-    if (aOrder === -1) return 1;
-    if (bOrder === -1) return -1;
-    return aOrder - bOrder;
-  });
   return (
     <>
       <Table.Head>
         <tr>
+          {selectable && (
+            <Table.Column className="w-8">
+              <input
+                type="checkbox"
+                checked={table.table.getIsAllRowsSelected()}
+                onChange={(e) => table.table.toggleAllRowsSelected(e.target.checked)}
+              />
+            </Table.Column>
+          )}
           {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
-          {Children.map(sortedChildren as never, ({ props: { collapsable, ...props } }: { props: ColumnProps }) => {
-            const accessor = "accessor" in props ? props.accessor : props.accessorAlias;
-            const col = tanstackColumns.find((col) => col.id === accessor);
-
+          {columns.map(({ props: { collapsable, ...props }, accessor, col }) => {
             if (table.columns.length > 0 && !col) return null;
-
-            if ("accessorAlias" in props) {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const { accessorAlias, ...rest } = props;
-              props = { accessor, ...rest };
-            }
 
             return (
               <Table.Column key={accessor} {...props}>
@@ -451,19 +544,22 @@ function Rows({ children, variant }: RowsProps) {
             const entries = Object.entries(variant?.(row.original) ?? {}) as Array<
               [NonNullable<VariantProps<typeof rowVariants>["variant"]>, boolean]
             >;
-            const selectedVariant = entries.find(([, value]) => value)?.[0];
-            const cells = row.getVisibleCells();
+            const selectedVariant = entries.find(([, value]) => value)?.[0] ?? "none";
+            const rowColumns = getRowColumns(columns, row, selectedVariant, title);
 
             return (
               <Table.Row key={row.id} variant={selectedVariant}>
-                {Children.map(sortedChildren as never, ({ props }: { props: ColumnProps }) => {
-                  const accessor = "accessor" in props ? props.accessor : props.accessorAlias;
-
-                  const cell = cells.find((cell) => cell.column.id === accessor);
-
-                  if (table.columns.length > 0 && !cell) return null;
-
-                  return <ColumnBody {...props} row={row} />;
+                {selectable && (
+                  <Table.Cell className="w-8">
+                    <input
+                      type="checkbox"
+                      checked={row.getIsSelected()}
+                      onChange={(e) => row.toggleSelected(e.target.checked)}
+                    />
+                  </Table.Cell>
+                )}
+                {rowColumns.map(({ props, accessor }) => {
+                  return <ColumnBody key={accessor} {...props} row={row} />;
                 })}
               </Table.Row>
             );

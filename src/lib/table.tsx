@@ -11,7 +11,7 @@ type TableContextType = {
   rounded?: "all" | "perimeter" | "none";
 };
 const TableContext = createContext<TableContextType | null>(null);
-const useTableContext = () => useContext(TableContext)!;
+export const useTableContext = () => useContext(TableContext)!;
 
 export type TableProps = {
   tableProps?: HTMLProps<HTMLTableElement>;
@@ -99,6 +99,8 @@ export type TableColumnProps = TableContextType &
     className?: string;
     thProps?: Omit<HTMLProps<HTMLTableCellElement>, "className">;
     colSpan?: number;
+    accessor?: string;
+    accessorAlias?: string;
   };
 const TableColumn = memo(function TableColumn({
   children,
@@ -109,6 +111,10 @@ const TableColumn = memo(function TableColumn({
   isNumber,
   rounded,
   colSpan,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  accessor,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  accessorAlias,
   ...rest
 }: TableColumnProps) {
   const ctx = useTableContext();
@@ -243,9 +249,11 @@ const cellVariants = cva(
       },
       rounded: {
         all: "sm:first-of-type:rounded-l-md sm:last-of-type:rounded-r-md",
-        perimeter:
-          "sm:first-of-type:border-l sm:last-of-type:border-r " +
+        perimeter: [
+          "sm:first-of-type:border-l sm:last-of-type:border-r ",
           "group-last:border-b group-last:sm:first-of-type:rounded-bl-md group-last:sm:last-of-type:rounded-br-md",
+          "print:border-l print:border-slate-400 print:last-of-type:border-r  group-last:print:first-of-type:rounded-bl-md group-last:print:last-of-type:rounded-br-md",
+        ],
         none: "",
       },
 
@@ -257,7 +265,6 @@ const cellVariants = cva(
     compoundVariants: [
       { align: "center", variant: "none", className: "first-of-type:text-center" },
       { align: "right", variant: "none", className: "first-of-type:text-right" },
-
       {
         variant: "none",
         rounded: "all",
@@ -278,6 +285,8 @@ export type TableCellProps = {
   className?: string;
   isNumber?: boolean;
   isDate?: boolean;
+  accessor?: string;
+  accessorAlias?: string;
 } & VariantProps<typeof cellVariants> &
   TableContextType &
   Omit<HTMLProps<HTMLTableCellElement>, "className" | "children">;
@@ -292,6 +301,10 @@ const TableCell = memo(function TableCell({
   isDate,
   variant,
   align,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  accessor,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  accessorAlias,
   ...rest
 }: TableCellProps) {
   const ctx = useTableContext();
@@ -315,6 +328,10 @@ const TableCell = memo(function TableCell({
   const date = children;
   if (date instanceof Date && isDate && isValid(date)) {
     value = format(date, "dd-MM-yyyy");
+  }
+
+  if (variant !== "none" && (!value || value === "-")) {
+    value = "";
   }
 
   return (

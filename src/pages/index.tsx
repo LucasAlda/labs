@@ -1,97 +1,32 @@
+const disp = generateData(10);
+const noDisp = generateData(5);
+
 const DATA = [
   {
-    type: "header",
-    date: "Cartera Disponible",
-    amount: 500000,
-
+    category: "header",
+    type: "Cartera Disponible",
+    amountArs: 9118459.54,
     subRows: [
       {
-        type: 12,
-        date: new Date("2023-01-01"),
-        asset: "AAPL",
-        quantity: 10,
-        amount: 100,
+        category: "subheader",
+        type: "Especies",
+        amountArs: 9035328.9,
+        subRows: disp,
       },
       {
-        date: new Date("2021-01-01"),
-        asset: "MELI",
-        quantity: 5,
-        amount: 200,
-      },
-      {
-        date: new Date("2021-02-01"),
-        asset: "TSLA",
-        quantity: 3,
-        lol: 1,
-        amount: 50,
+        category: "subheader",
+        type: "Moneda",
+        amountArs: 83130.64,
+        subRows: noDisp,
       },
     ],
   },
   {
-    type: "header",
-    date: "Cartera Disponible",
-    amount: 500000,
-
-    subRows: [
-      {
-        type: 12,
-        date: new Date("2023-01-01"),
-        asset: "AAPL",
-        quantity: 10,
-        amount: 100,
-      },
-      {
-        date: new Date("2021-01-01"),
-        asset: "MELI",
-        quantity: 5,
-        amount: 200,
-      },
-      {
-        date: new Date("2021-02-01"),
-        asset: "TSLA",
-        quantity: 3,
-        lol: 1,
-        amount: 50,
-      },
-    ],
+    category: "footer",
+    type: "Totales",
+    amountArs: 9118459.54,
   },
-  {
-    type: "header",
-    date: "Cartera Disponible",
-    amount: 500000,
-
-    subRows: [
-      {
-        type: 12,
-        date: new Date("2023-01-01"),
-        asset: "AAPL",
-        quantity: 10,
-        amount: 100,
-      },
-      {
-        date: new Date("2021-01-01"),
-        asset: "MELI",
-        quantity: 5,
-        amount: 200,
-      },
-      {
-        date: new Date("2021-02-01"),
-        asset: "TSLA",
-        quantity: 3,
-        lol: 1,
-        amount: 50,
-      },
-    ],
-  },
-  {
-    type: "footer",
-    date: "Total",
-    header: true,
-    amount: 350,
-    onlyHeader: true,
-    subRows: [],
-  },
-] as Array<Row & { subRows: Array<Row> }>;
+];
 
 type Row = {
   date: Date | string;
@@ -103,6 +38,7 @@ type Row = {
 
 import { DataTablePagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
+import { generateData } from "@/faker";
 import { useTable } from "@/lib/datatable";
 
 import { useEffect, useState } from "react";
@@ -116,55 +52,47 @@ export default function Example() {
     }, 2000);
   }, []);
 
-  const [table, DataTable] = useTable<Array<Row>>({
-    key: "position",
-    data: data,
-    sortMinDepth: 1,
-    prerender: false,
-    pagination: 10,
-  });
-  const [counter, setCounter] = useState(0);
+  type Data = Array<(typeof disp)[number] & { category?: string }>;
 
-  console.log(table.getSelected());
+  const [table, DataTable] = useTable({
+    key: "position",
+    data: data as Data,
+    sortMinDepth: 2,
+    pagination: 20,
+  });
+
   return (
-    <div className="space-y-16 p-16">
-      <DataTable.Root table={table} variant="card">
+    <div className="space-y-16 py-16 sm:p-16">
+      <DataTable.Root table={table} variant="narrow">
         <DataTable.Header>
-          <DataTable.Title>Posicion</DataTable.Title>
-          <Button size="sm" onClick={() => setCounter((p) => ++p)}>
-            {counter}
-          </Button>
+          {/* <DataTable.Title>Posicion</DataTable.Title> */}
           <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
         <DataTable.Content>
-          <DataTable.Rows variant={(row) => ({ main: row.type === "header", dark: row.type === "footer" })}>
-            <DataTable.Column accessorAlias="select" label="Seleccionar" align="center">
-              {({ controller }) => (
-                <input
-                  type="checkbox"
-                  checked={controller.getIsSelected()}
-                  onChange={(e) => controller.toggleSelected(e.target.checked)}
-                />
-              )}
-            </DataTable.Column>
-            <DataTable.Column collapsable accessor="date" label="Fecha" isDate></DataTable.Column>
-            <DataTable.Column accessor="asset" label="Activo" align="center" />
-            <DataTable.Column accessor="amount" label="Monto Pesos" isNumber />
-            <DataTable.Column accessorAlias="actions" label="Acciones Globales" align="center">
-              {({ row }) => (
-                <Button size="sm" onClick={() => setCounter((p) => ++p)}>
-                  {row.amount} Contador: {counter}
-                </Button>
-              )}
-            </DataTable.Column>
-            <DataTable.Column accessor="quantity" label="Acciones" align="center">
+          <DataTable.Rows
+            variant={(row) => ({
+              main: row?.category === "header",
+              gray: row?.category === "subheader",
+              dark: row?.category === "footer",
+            })}
+          >
+            <DataTable.Column title collapsable accessor="type" label="Tipo" align="center" />
+            <DataTable.Column accessor="title" label="Concepto" align="center" />
+            <DataTable.Column accessor="code" label="Codigo" align="right" />
+            <DataTable.Column accessor="abbreviation" label="Abreviatura" align="center" />
+            <DataTable.Column accessor="quantity" label="Cantidad" align="right" />
+            <DataTable.Column accessor="price" label="Precio" isNumber />
+            <DataTable.Column accessor="date" label="Fecha" isDate />
+            <DataTable.Column accessor="amount" label="Monto" isNumber />
+            <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
+            <DataTable.Column accessorAlias="actions" label="Acciones" align="center">
               {RowActions}
             </DataTable.Column>
           </DataTable.Rows>
         </DataTable.Content>
-        <DataTable.Loading height="h-60">Cargando Posicion...</DataTable.Loading>
-        <DataTable.Empty height="h-60">
+        <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
+        <DataTable.Empty height="h-80">
           <span>No tiene Posición</span>
           <Button size="sm">Comprar</Button>
         </DataTable.Empty>
