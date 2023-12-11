@@ -28,13 +28,7 @@ const DATA = [
   },
 ];
 
-type Row = {
-  date: Date | string;
-  asset?: string;
-  quantity?: number;
-  amount: number;
-  type?: string;
-};
+type Row = (typeof disp)[number] & { category?: string };
 
 import { DataTablePagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
@@ -52,11 +46,9 @@ export default function Example() {
     }, 2000);
   }, []);
 
-  type Data = Array<(typeof disp)[number] & { category?: string }>;
-
   const [table, DataTable] = useTable({
     key: "position",
-    data: data as Data,
+    data: data as Array<Row>,
     sortMinDepth: 2,
     pagination: 20,
   });
@@ -69,7 +61,7 @@ export default function Example() {
         <DataTable.Header>
           {/* <DataTable.Title>Posicion</DataTable.Title> */}
           <Button onClick={() => setCondensed((p) => !p)} variant={"outline"} size="sm">
-            condensed
+            {condensed ? "Condesed" : "Condese"}
           </Button>
           <DataTable.Search />
           <DataTable.Config />
