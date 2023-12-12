@@ -12,7 +12,7 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
   if (table.getPageCount() < 2 && table.getRowModel().flatRows.length < 10 && !allwaysShow) return null;
   return (
     <div
-      className={cn("flex items-center justify-between pt-3 text-slate-500", {
+      className={cn("mt-auto flex items-center justify-between pt-3 text-slate-500", {
         "mb-3": rounded !== "all",
         "border-t border-slate-200 px-3": rounded === "none",
       })}
