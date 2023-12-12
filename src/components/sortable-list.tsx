@@ -22,15 +22,15 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export const ColumnVisibility = () => {
-  const table = useTableCtx();
+export const ColumnVisibility = ({ size }: { size: "sm" | "md" | "lg" }) => {
+  const { table, view } = useTableCtx();
 
-  const columns = table.table
+  const columns = table
     .getAllColumns()
     .filter((column) => typeof column.accessorFn !== "undefined")
     .sort((a, b) => {
-      const aOrder = table.order?.indexOf(a.id) ?? -1;
-      const bOrder = table.order?.indexOf(b.id) ?? -1;
+      const aOrder = view.orders[size]?.indexOf(a.id) ?? -1;
+      const bOrder = view.orders[size]?.indexOf(b.id) ?? -1;
       if (aOrder === -1 && bOrder === -1) return 0;
       if (aOrder === -1) return 1;
       if (bOrder === -1) return -1;
@@ -40,9 +40,9 @@ export const ColumnVisibility = () => {
   const order = columns.map((column) => ({ id: column.id, name: column.columnDef.header }));
 
   function setItems(items: SetStateAction<SortableItemProps[]>) {
-    table.setOrder(
+    view.changeOrder(
       (typeof items === "function" ? items(order) : items).map((i) => i.id),
-      false
+      size
     );
   }
 
@@ -52,14 +52,28 @@ export const ColumnVisibility = () => {
         {columns.map((col) => (
           <SortableColumn key={col.id} id={col.id}>
             <div className="flex grow items-center justify-between">
-              <span>{col.columnDef.header?.toString()}</span>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => col.toggleVisibility()}>
-                {col.getIsVisible() ? (
+              <span className={cn(!view.getIsVisible(col.id, size) ? "text-slate-400/90" : "text-slate-900")}>
+                {col.columnDef.header?.toString()}
+              </span>
+              {view.getIsVisible(col.id, size) ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => view.toggleVisibility(col.id, false, size)}
+                >
                   <Eye className="h-4 w-4 text-slate-400/80" />
-                ) : (
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => view.toggleVisibility(col.id, true, size)}
+                >
                   <EyeOff className="h-4 w-4 text-slate-400/80" />
-                )}
-              </Button>
+                </Button>
+              )}
             </div>
           </SortableColumn>
         ))}

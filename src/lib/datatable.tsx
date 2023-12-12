@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { DataTableColumnHeader } from "@/components/column-header-helper";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import {
   getPaginationRowModel,
   type PaginationState,
   type RowSelectionState,
+  type Updater,
 } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
 import { format } from "date-fns";
@@ -78,6 +80,118 @@ function useLocalStorage<T>(key: string, defaultValue: T) {
   return [value, changeValue, changed] as const;
 }
 
+type Visibilitys<T extends string | symbol | number = string> = {
+  sm?: { [k in T | (string & {})]?: boolean };
+  md?: { [k in T | (string & {})]?: boolean };
+  lg?: { [k in T | (string & {})]?: boolean };
+};
+
+type Orders = {
+  sm?: string[];
+  md?: string[];
+  lg?: string[];
+};
+
+function useView(key: string, defaultVisibility?: Visibilitys) {
+  const [size, setSize] = useState<"sm" | "md" | "lg">("lg");
+  const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key}_order`, {});
+  const [visibilitys, setVisibilitys, visibilityChanged] = useLocalStorage<Visibilitys>(
+    `table_${key}_columns`,
+    defaultVisibility ?? {}
+  );
+
+  useEffect(() => {
+    function onResize() {
+      if (window.innerWidth < 640) {
+        setSize("sm");
+      } else if (window.innerWidth < 1024) {
+        setSize("md");
+      } else {
+        setSize("lg");
+      }
+    }
+
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const visibility = visibilitys[size] as VisibilityState;
+  const order = orders[size];
+
+  const save = useCallback(() => {
+    setVisibilitys((v) => v, true);
+    setOrders((o) => o, true);
+  }, [setVisibilitys, setOrders]);
+
+  const changeOrder = useCallback(
+    (order: Updater<string[]>, onSize = size) => {
+      setOrders((prev) => {
+        const newOrder = typeof order === "function" ? order(prev[onSize] ?? []) : order;
+        return { ...prev, [onSize]: newOrder };
+      }, false);
+    },
+    [setOrders, size]
+  );
+
+  const changeVisibility = useCallback(
+    (visibility: Updater<VisibilityState>, onSize = size) => {
+      setVisibilitys((prev) => {
+        const newVisibility =
+          typeof visibility === "function" ? visibility((prev[onSize] as VisibilityState) ?? {}) : visibility;
+        return { ...prev, [onSize]: newVisibility };
+      }, false);
+    },
+    [setVisibilitys, size]
+  );
+
+  const toggleVisibility = useCallback(
+    (col: string, value: boolean, size: "sm" | "md" | "lg") => {
+      changeVisibility((p) => {
+        p = p ?? {};
+        p[col] = value;
+        return p;
+      }, size);
+    },
+    [changeVisibility]
+  );
+
+  const getIsVisible = useCallback(
+    (col: string, size: "sm" | "md" | "lg") => {
+      return visibilitys[size]?.[col] ?? true;
+    },
+    [visibilitys]
+  );
+
+  return useMemo(
+    () => ({
+      order,
+      orders,
+      getIsVisible,
+      visibility,
+      size,
+      changeOrder,
+      changeVisibility,
+      toggleVisibility,
+      isChanged: orderChanged || visibilityChanged,
+      save,
+    }),
+    [
+      changeOrder,
+      changeVisibility,
+      getIsVisible,
+      order,
+      orderChanged,
+      orders,
+      save,
+      size,
+      toggleVisibility,
+      visibility,
+      visibilityChanged,
+    ]
+  );
+}
+
 const emptyArray: Array<Record<string, unknown>> = [];
 export function useTable<T extends Array<Record<string, unknown>>>({
   key,
@@ -85,12 +199,14 @@ export function useTable<T extends Array<Record<string, unknown>>>({
   sortMinDepth = 0,
   prerender = true,
   pagination,
+  visibility,
 }: {
   key: string;
   data: T | undefined;
   sortMinDepth?: number;
   prerender?: boolean;
   pagination?: number;
+  visibility?: Visibilitys<keyof T[number]>;
 }) {
   const [selected, setSelected] = useState<RowSelectionState>({});
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
@@ -101,22 +217,11 @@ export function useTable<T extends Array<Record<string, unknown>>>({
   }));
   const [globalFilter, setGlobalFilter] = useState("");
   const [expanded, setExpanded] = useState<ExpandedState>(true);
-  const [order, setOrder, orderChanged] = useLocalStorage<string[]>(`table_order_${key}`, []);
-  const [columnVisibility, setColumnVisibility, visibilityChanged] = useLocalStorage<VisibilityState>(
-    `table_columns_${key}`,
-    {}
-  );
-
-  const saveView = useCallback(() => {
-    setColumnVisibility(columnVisibility, true);
-    setOrder(order, true);
-  }, [columnVisibility, order, setColumnVisibility, setOrder]);
+  const view = useView(key, visibility);
 
   const autoDepthSort = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (a: Row<any>, b: Row<any>, columnId: string) => {
+    (a: Row<Record<string, unknown>>, b: Row<Record<string, unknown>>, columnId: string) => {
       if (a.depth < sortMinDepth || b.depth < sortMinDepth) return 0;
-
       if (a.getValue(columnId) instanceof Date && b.getValue(columnId) instanceof Date) {
         return sortingFns.datetime(a, b, columnId);
       }
@@ -128,7 +233,7 @@ export function useTable<T extends Array<Record<string, unknown>>>({
   const tanstackColumns = useMemo(
     () =>
       columns.map((col) => ({
-        accessorKey: "accessor" in col ? col.accessor : col.accessorAlias,
+        accessorKey: getAccessor(col),
         header: col.label,
         sortingFn: autoDepthSort,
       })),
@@ -140,7 +245,7 @@ export function useTable<T extends Array<Record<string, unknown>>>({
     columns: tanstackColumns,
     state: {
       sorting,
-      columnVisibility,
+      columnVisibility: view.visibility,
       expanded,
       pagination: paginationState,
       rowSelection: selected,
@@ -150,7 +255,7 @@ export function useTable<T extends Array<Record<string, unknown>>>({
     getExpandedRowModel: getExpandedRowModel(),
     onPaginationChange: setPaginationState,
     getSubRows: useCallback((row: Record<string, unknown>) => row.subRows, []) as never,
-    onColumnVisibilityChange: (v) => setColumnVisibility(v, false),
+    onColumnVisibilityChange: view.changeVisibility,
     onRowSelectionChange: setSelected,
     enableRowSelection: true,
     getFilteredRowModel: getFilteredRowModel(),
@@ -188,30 +293,14 @@ export function useTable<T extends Array<Record<string, unknown>>>({
         table,
         setColumns,
         columns,
-        columnVisibility,
-        saveView,
-        order,
-        setOrder,
+        view,
         prerender,
         isEmpty: data?.length === 0,
         isLoading: data === undefined,
-        viewChanged: visibilityChanged || orderChanged,
         globalFilter,
         setGlobalFilter,
       } satisfies UseTable),
-    [
-      columnVisibility,
-      columns,
-      data,
-      globalFilter,
-      order,
-      orderChanged,
-      prerender,
-      saveView,
-      setOrder,
-      table,
-      visibilityChanged,
-    ]
+    [columns, data, globalFilter, prerender, table, view]
   );
 
   return [returnValue, DataTable as DateTable] as const;
@@ -221,16 +310,12 @@ type UseTable = {
   table: TTable<Record<string, unknown>>;
   setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
   columns: ColumnProps[];
-  columnVisibility: VisibilityState;
   globalFilter: string;
   setGlobalFilter: Dispatch<SetStateAction<string>>;
-  order: string[] | undefined;
-  saveView: () => void;
-  setOrder: (value: string[], save?: boolean) => void;
+  view: ReturnType<typeof useView>;
   prerender?: boolean;
   isEmpty: boolean;
   isLoading: boolean;
-  viewChanged: boolean;
 };
 const DataTableCtx = createContext<UseTable>(null as unknown as UseTable);
 
@@ -382,8 +467,8 @@ function useColumns(children: ReactNode) {
   }, [columns.map((col) => getAccessor(col)).join(",")]);
 
   const sortedColumns = columns.sort((a, b) => {
-    const aOrder = table.order?.indexOf(getAccessor(a)) ?? -1;
-    const bOrder = table.order?.indexOf(getAccessor(b)) ?? -1;
+    const aOrder = table.view.order?.indexOf(getAccessor(a)) ?? -1;
+    const bOrder = table.view.order?.indexOf(getAccessor(b)) ?? -1;
 
     if (aOrder === -1 && bOrder === -1) return 0;
     if (aOrder === -1) return 1;
@@ -434,7 +519,6 @@ function getRowColumns(
   if (titleIndex > 0) variantColumns[titleIndex] = firstCol;
 
   variantColumns.splice(0, firstValue, { ...title, props: { ...title.props, colSpan: firstValue } });
-  console.log(variantColumns);
 
   return variantColumns;
 }

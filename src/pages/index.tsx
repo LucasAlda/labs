@@ -51,6 +51,18 @@ export default function Example() {
     data: data as Array<Row>,
     sortMinDepth: 2,
     pagination: 20,
+    visibility: {
+      sm: {
+        type: false,
+        amount: false,
+        category: false,
+        code: false,
+        date: false,
+        id: false,
+        title: false,
+        actions: false,
+      },
+    },
   });
 
   const [condensed, setCondensed] = useState(false);
@@ -59,9 +71,8 @@ export default function Example() {
     <div className="space-y-16 py-16 sm:p-16">
       <DataTable.Root table={table} variant="narrow">
         <DataTable.Header>
-          {/* <DataTable.Title>Posicion</DataTable.Title> */}
           <Button onClick={() => setCondensed((p) => !p)} variant={"outline"} size="sm">
-            {condensed ? "Condesed" : "Condese"}
+            {condensed ? "Condensed" : "Condense"}
           </Button>
           <DataTable.Search />
           <DataTable.Config />
