@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { DataTableColumnHeader } from "@/components/column-header-helper";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -53,25 +53,25 @@ type GetRow<T> = T extends Array<infer K>
     : K
   : never;
 
-function useLocalStorage<T>(key: string, defaultValue: T) {
+function useLocalStorage<T>(key: string | undefined, defaultValue: T) {
   const [changed, setChanged] = useState(false);
-  const [value, setValue] = useState(
-    () =>
-      (JSON.parse((typeof window !== "undefined" ? window.localStorage.getItem(key) : "null") ?? "null") as T) ??
-      defaultValue
-  );
+  const [value, setValue] = useState(() => {
+    const savedValue = key && typeof window !== "undefined" ? window.localStorage.getItem(key) ?? "null" : "null";
+    return (JSON.parse(savedValue) as T) ?? defaultValue;
+  });
 
   const changeValue = useCallback(
     function changeValue(value: T | ((old: T) => T), save = true) {
       setValue((prev) => {
         const newVal = typeof value === "function" ? (value as (old: T) => T)(prev) : value;
+        if (!key) return newVal;
+
         if (save) {
           window.localStorage.setItem(key, JSON.stringify(newVal));
           setChanged(false);
         } else {
           setChanged(true);
         }
-
         return newVal;
       });
     },
@@ -92,7 +92,7 @@ type Orders = {
   lg?: string[];
 };
 
-function useView(key: string, defaultVisibility?: Visibilitys) {
+function useView(key?: string, defaultVisibility?: Visibilitys) {
   const [size, setSize] = useState<"sm" | "md" | "lg">("lg");
   const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key}_order`, {});
   const [visibilitys, setVisibilitys, visibilityChanged] = useLocalStorage<Visibilitys>(
@@ -201,7 +201,7 @@ export function useTable<T extends Array<Record<string, unknown>>>({
   pagination,
   visibility,
 }: {
-  key: string;
+  key?: string;
   data: T | undefined;
   sortMinDepth?: number;
   prerender?: boolean;
@@ -357,6 +357,7 @@ type ColumnProps = {
   isNumber?: boolean;
   align?: "center" | "right" | "left";
   label: string;
+  className?: string;
   children?:
     | ReactNode
     | ((props: {
@@ -571,7 +572,7 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
             </Table.Column>
           )}
           {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
-          {columns.map(({ props: { collapsable, ...props }, accessor, col }) => {
+          {columns.map(({ props: { collapsable, className, ...props }, accessor, col }) => {
             if (table.columns.length > 0 && !col) return null;
 
             return (
@@ -619,6 +620,10 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
   );
 }
 
+function DataTableAction({ className, ...props }: ButtonProps) {
+  return <Button size="sm" {...props} className={cn("h-6 px-2", className)} />;
+}
+
 function Loading({ children, height, className }: { children?: ReactNode; height?: string; className?: string }) {
   const { isLoading } = useTableCtx();
   if (!isLoading) return null;
@@ -662,4 +667,5 @@ export const DataTable = {
   Column: Column,
   Loading,
   Empty,
+  Action: DataTableAction,
 };

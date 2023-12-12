@@ -47,7 +47,6 @@ export default function Example() {
   }, []);
 
   const [table, DataTable] = useTable({
-    key: "position",
     data: data as Array<Row>,
     sortMinDepth: 2,
     pagination: 20,
@@ -95,7 +94,11 @@ export default function Example() {
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
             <DataTable.Column accessorAlias="actions" label="Acciones" align="center">
-              {RowActions}
+              {({ row, variant }) =>
+                variant === "none" && (
+                  <DataTable.Action onClick={() => alert(JSON.stringify(row, null, 2))}>Button</DataTable.Action>
+                )
+              }
             </DataTable.Column>
           </DataTable.Rows>
         </DataTable.Content>
@@ -109,13 +112,3 @@ export default function Example() {
     </div>
   );
 }
-
-const RowActions = ({ row }: { row: Row }) => {
-  const [counter, setCounter] = useState(0);
-
-  return (
-    <Button size="sm" onClick={() => setCounter((p) => ++p)}>
-      {row.amount} Contador: {counter}
-    </Button>
-  );
-};
