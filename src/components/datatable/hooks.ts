@@ -135,7 +135,7 @@ type Orders = {
   lg?: string[];
 };
 
-export function useView(key?: string, defaultVisibility?: Visibilitys) {
+export function useView(key: string | undefined, defaultVisibility?: Visibilitys) {
   const [size, setSize] = useState<"sm" | "md" | "lg">("lg");
   const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key}_order`, {});
   const [visibilitys, setVisibilitys, visibilityChanged] = useLocalStorage<Visibilitys>(

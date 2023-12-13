@@ -62,7 +62,7 @@ export default function Example() {
   const [table, DataTable] = useTable({
     data: data as Array<Row>,
     sortMinDepth: 2,
-    // pagination: 20,
+    pagination: 20,
     view,
   });
 
@@ -102,11 +102,7 @@ export default function Example() {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DataTable.DropdownItem
-                    variant="outline"
-                    className="bg-white text-slate-600"
-                    onClick={({ row }) => alert(`${row.abbreviation} 1`)}
-                  >
+                  <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
                     Abbreviation
                   </DataTable.DropdownItem>
                   <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 2`)}>
