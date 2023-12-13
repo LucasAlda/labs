@@ -32,6 +32,7 @@ type Row = (typeof disp)[number] & { category?: string };
 
 import { useTable, useView } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { generateData } from "@/faker";
 
 import { useEffect, useState } from "react";
@@ -94,16 +95,26 @@ export default function Example() {
             <DataTable.Column accessor="date" label="Fecha" isDate />
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
-            <DataTable.Actions accessorAlias="actionsCol">
-              <DataTable.Action
-                variant="outline"
-                className="bg-white text-slate-600"
-                onClick={({ row }) => alert(`${row.abbreviation} 1`)}
-              >
-                Test
-              </DataTable.Action>
-              <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 2`)}>Test</DataTable.Action>
-            </DataTable.Actions>
+            <DataTable.Buttons accessorAlias="actionsCol" label="Acciones">
+              <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
+            </DataTable.Buttons>
+            <DataTable.Dropdown accessorAlias="actionCol2" label="Acciones2">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DataTable.DropdownItem
+                    variant="outline"
+                    className="bg-white text-slate-600"
+                    onClick={({ row }) => alert(`${row.abbreviation} 1`)}
+                  >
+                    Abbreviation
+                  </DataTable.DropdownItem>
+                  <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 2`)}>
+                    Amount
+                  </DataTable.DropdownItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DataTable.Dropdown>
           </DataTable.Rows>
         </DataTable.Content>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>

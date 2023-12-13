@@ -189,7 +189,7 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
               />
             </Table.Column>
           )}
-          {columns.map(({ props: { title, collapsable, className, ...props }, accessor, col }) => {
+          {columns.map(({ props: { title, collapsable, className, columnType, ...props }, accessor, col }) => {
             if (table.columns.length > 0 && !col) return null;
 
             return (
@@ -227,7 +227,8 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
                   </Table.Cell>
                 )}
                 {rowColumns.map(({ props, accessor }) => {
-                  if (props.columnType === "actions") return <Actions key={accessor} {...props} row={row} />;
+                  if (props.columnType === "buttons") return <Buttons key={accessor} {...props} row={row} />;
+                  if (props.columnType === "dropdown") return <DatabaseDropdown key={accessor} {...props} row={row} />;
                   return <Column key={accessor} {...props} row={row} />;
                 })}
               </Table.Row>
@@ -243,12 +244,22 @@ function ColumnDummy(props: ColumnProps) {
   return null;
 }
 
-function ActionsDummy(props: ColumnProps & { type?: "dropdown" | "buttons" }) {
+function ButtonsDummy(props: ColumnProps & { responsive?: boolean }) {
   props;
   return null;
 }
 
-function Column({ collapsable, title, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
+function DropdownDummy(props: ColumnProps) {
+  props;
+  return null;
+}
+
+function Column({
+  collapsable,
+  title,
+  columnType,
+  ...props
+}: ColumnProps & { row: Row<Record<string, unknown>>; columnType?: string }) {
   const tableRowctx = useTableRowContext();
   const children =
     typeof props.children === "function"
@@ -283,11 +294,11 @@ function Column({ collapsable, title, ...props }: ColumnProps & { row: Row<Recor
 
 const ActionsContext = createContext<Row<Record<string, unknown>>>(null as never);
 
-function Actions({
-  type = "buttons",
+function Buttons({
+  responsive = true,
   children: childrenRaw,
   ...props
-}: ColumnProps & { row: Row<Record<string, unknown>>; type?: "dropdown" | "buttons" }) {
+}: ColumnProps & { row: Row<Record<string, unknown>>; responsive?: boolean }) {
   const { variant } = useTableRowContext();
   const children =
     typeof childrenRaw === "function"
@@ -297,8 +308,44 @@ function Actions({
   return (
     <Column {...props}>
       <ActionsContext.Provider value={props.row}>
-        {type === "buttons" && <div className="hidden gap-1 md:flex">{children}</div>}
-        <div className={cn(type === "buttons" && "md:hidden")}>
+        <div className={cn("flex gap-1", responsive && "hidden md:flex")}>{children}</div>
+        {responsive && (
+          <div className={"md:hidden"}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                {Children.toArray(children).map((({ props }: { props: ActionProps }, i: number) => (
+                  <DatabaseDropdownItem key={i} {...props} />
+                )) as never)}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </ActionsContext.Provider>
+    </Column>
+  );
+}
+
+function DatabaseDropdown({
+  label,
+  children: childrenRaw,
+  ...props
+}: ColumnProps & { row: Row<Record<string, unknown>> }) {
+  const { variant } = useTableRowContext();
+  const children =
+    typeof childrenRaw === "function"
+      ? childrenRaw({ row: props.row.original, variant: variant ?? "none", controller: props.row })
+      : childrenRaw;
+
+  return (
+    <Column {...props}>
+      <ActionsContext.Provider value={props.row}>
+        <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -306,10 +353,8 @@ function Actions({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              {Children.toArray(children).map((({ props }: { props: ActionProps }, i: number) => (
-                <ActionDropdown key={i} {...props} />
-              )) as never)}
+              <DropdownMenuLabel>{label ?? "Acciones"}</DropdownMenuLabel>
+              {children}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -322,7 +367,7 @@ export type ActionProps<TRow = Record<string, unknown>> = Omit<ButtonProps, "onC
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
 };
 
-function Action({ className, ...props }: ActionProps) {
+function DatabaseButton({ className, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useContext(ActionsContext);
 
@@ -333,7 +378,7 @@ function Action({ className, ...props }: ActionProps) {
   return <Button size="sm" {...props} className={cn("h-6 px-2", className)} onClick={handleClick} />;
 }
 
-function ActionDropdown({ className, children, ...props }: ActionProps) {
+function DatabaseDropdownItem({ className, children, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useContext(ActionsContext);
 
@@ -387,7 +432,9 @@ export const DataTable = {
   Column: ColumnDummy,
   Loading,
   Empty,
-  Actions: ActionsDummy,
-  Action: Action,
+  Buttons: ButtonsDummy,
+  Button: DatabaseButton,
+  Dropdown: DropdownDummy,
+  DropdownItem: DatabaseDropdownItem,
   Pagination: DataTablePagination,
 };

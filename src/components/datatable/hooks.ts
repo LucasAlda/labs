@@ -63,7 +63,12 @@ function useLocalStorage<T>(key: string | undefined, defaultValue: T) {
   return [value, changeValue, changed] as const;
 }
 
-const columnTypes = { ColumnDummy: "column", ActionsDummy: "actions", SelectDummy: "select" } as const;
+const columnTypes = {
+  ColumnDummy: "column",
+  ButtonsDummy: "buttons",
+  DropdownDummy: "dropdown",
+  SelectDummy: "select",
+} as const;
 
 type ColumnType = ValueOf<typeof columnTypes>;
 
@@ -71,14 +76,17 @@ export function useColumns(children: ReactNode) {
   const table = useDataTable();
   const tanstackColumns = table.table.getVisibleFlatColumns();
 
-  const columns = Children.map(children as never, ({ props, type }: { props: ColumnProps; type: { name: string } }) => {
-    const name = type.name;
-    return {
-      columnType: (name in columnTypes ? columnTypes[name as never] : undefined) as ColumnType | undefined,
-      ...props,
-    };
-  }).filter((col) => {
-    if (!col.columnType) console.error(`Invalid child component for DataTable, ignoring...`);
+  const columns = Children.map(
+    children as never,
+    ({ props, type }: { props: ColumnProps; type?: { name: string } }) => {
+      const name = type?.name ?? "NO EXISTS";
+      return {
+        columnType: (name in columnTypes ? columnTypes[name as never] : undefined) as ColumnType | undefined,
+        ...props,
+      };
+    }
+  ).filter((col) => {
+    if (!col.columnType) console.error(`Invalid child component for DataTable, ignoring...`, col);
     return col.columnType;
   });
 
@@ -323,11 +331,13 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
 
   type DTColumnProps = ColumnProps<TRow>;
 
-  type DateTable = Omit<typeof DataTable, "Column" | "Rows" | "Actions" | "Action"> & {
+  type DateTable = Omit<typeof DataTable, "Column" | "Rows" | "Buttons" | "Button" | "Dropdown" | "DropdownItem"> & {
     Rows: (props: RowsProps<TRow>) => JSX.Element;
     Column: (props: DTColumnProps) => null;
-    Actions: (props: DTColumnProps) => null;
-    Action: (props: ActionProps<TRow>) => JSX.Element;
+    Buttons: (props: ColumnProps<TRow> & { responsive?: boolean }) => null;
+    Dropdown: (props: ColumnProps<TRow>) => null;
+    Button: (props: ActionProps<TRow>) => JSX.Element;
+    DropdownItem: (props: ActionProps<TRow>) => JSX.Element;
   };
 
   const returnValue = useMemo(
