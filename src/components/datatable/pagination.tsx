@@ -1,6 +1,6 @@
+import { useTableCtx } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useTableCtx } from "@/lib/datatable";
 import { useTableContext } from "@/lib/table";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -53,7 +53,7 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
-            <span className="sr-only">Go to first page</span>
+            <span className="sr-only">Ir a primer página</span>
             <ChevronsLeft className="h-3.5 w-3.5" />
           </Button>
           <Button
@@ -62,7 +62,7 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            <span className="sr-only">Go to previous page</span>
+            <span className="sr-only">Ir a página anterior</span>
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           <Button
@@ -71,7 +71,7 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            <span className="sr-only">Go to next page</span>
+            <span className="sr-only">Ir a página siguiente</span>
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
           <Button
@@ -80,7 +80,7 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >
-            <span className="sr-only">Go to last page</span>
+            <span className="sr-only">Ir a última página</span>
             <ChevronsRight className="h-3.5 w-3.5" />
           </Button>
         </div>

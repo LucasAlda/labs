@@ -1,4 +1,3 @@
-import { useTableCtx } from "@/lib/datatable";
 import { Eye, EyeOff, GripHorizontal } from "lucide-react";
 import { type ReactNode, type SetStateAction } from "react";
 import React from "react";
@@ -21,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useTableCtx } from "@/components/datatable/hooks";
 
 export const ColumnVisibility = ({ size }: { size: "sm" | "md" | "lg" }) => {
   const { table, view } = useTableCtx();

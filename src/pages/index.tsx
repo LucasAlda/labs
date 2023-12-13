@@ -30,10 +30,9 @@ const DATA = [
 
 type Row = (typeof disp)[number] & { category?: string };
 
-import { DataTablePagination } from "@/components/pagination";
+import { useTable, useView } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
 import { generateData } from "@/faker";
-import { useTable } from "@/lib/datatable";
 
 import { useEffect, useState } from "react";
 
@@ -46,25 +45,27 @@ export default function Example() {
     }, 2000);
   }, []);
 
-  const [table, DataTable] = useTable({
-    data: data as Array<Row>,
-    sortMinDepth: 2,
-    pagination: 20,
-    visibility: {
-      sm: {
-        type: false,
-        amount: false,
-        category: false,
-        code: false,
-        date: false,
-        id: false,
-        title: false,
-        actions: false,
-      },
+  const view = useView("test", {
+    sm: {
+      type: false,
+      amount: false,
+      category: false,
+      code: false,
+      date: false,
+      id: false,
+      title: false,
+      actions: false,
     },
   });
 
-  const [condensed, setCondensed] = useState(false);
+  const [table, DataTable] = useTable({
+    data: data as Array<Row>,
+    sortMinDepth: 2,
+    // pagination: 20,
+    view,
+  });
+
+  const [condensed, setCondensed] = useState(true);
 
   return (
     <div className="space-y-16 py-16 sm:p-16">
@@ -93,13 +94,10 @@ export default function Example() {
             <DataTable.Column accessor="date" label="Fecha" isDate />
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
-            <DataTable.Column accessorAlias="actions" label="Acciones" align="center">
-              {({ row, variant }) =>
-                variant === "none" && (
-                  <DataTable.Action onClick={() => alert(JSON.stringify(row, null, 2))}>Button</DataTable.Action>
-                )
-              }
-            </DataTable.Column>
+            <DataTable.Actions accessorAlias="actionsCol">
+              <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 1`)}>Test</DataTable.Action>
+              <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 2`)}>Test</DataTable.Action>
+            </DataTable.Actions>
           </DataTable.Rows>
         </DataTable.Content>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
@@ -107,7 +105,7 @@ export default function Example() {
           <span>No tiene Posición</span>
           <Button size="sm">Comprar</Button>
         </DataTable.Empty>
-        <DataTablePagination />
+        <DataTable.Pagination />
       </DataTable.Root>
     </div>
   );
