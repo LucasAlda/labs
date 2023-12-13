@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars */
 import { DataTableColumnHeader } from "@/components/datatable/column-header-helper";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -19,14 +19,14 @@ import { type VariantProps } from "class-variance-authority";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, MoreHorizontal, Settings2 } from "lucide-react";
 import { type ReactNode, useCallback, startTransition, Children, createContext, useContext } from "react";
-import { DataTableCtx, useTableCtx, type UseTable, getAccessor, useColumns } from "@/components/datatable/hooks";
+import { DataTableContext, useDataTable, type UseTable, getAccessor, useColumns } from "@/components/datatable/hooks";
 import { DataTablePagination } from "@/components/datatable/pagination";
 
 function DataTableRoot({ table, ...props }: TableCardProps & { children: ReactNode; table: UseTable }) {
   return (
-    <DataTableCtx.Provider value={table}>
+    <DataTableContext.Provider value={table}>
       <TableContainer {...props} />
-    </DataTableCtx.Provider>
+    </DataTableContext.Provider>
   );
 }
 
@@ -35,7 +35,7 @@ function Title({ children, className }: { children?: ReactNode; className?: stri
 }
 
 function Search({ className }: { className?: string }) {
-  const { globalFilter, setGlobalFilter } = useTableCtx();
+  const { globalFilter, setGlobalFilter } = useDataTable();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     startTransition(() => {
@@ -53,7 +53,7 @@ function Search({ className }: { className?: string }) {
   );
 }
 
-export type ColumnProps = {
+export type ColumnProps<TRow = Record<string, unknown>> = {
   isDate?: boolean;
   isNumber?: boolean;
   align?: "center" | "right" | "left";
@@ -62,58 +62,18 @@ export type ColumnProps = {
   children?:
     | ReactNode
     | ((props: {
-        row: Record<string, unknown>;
-        controller: Row<Record<string, unknown>>;
+        row: TRow;
+        controller: Row<TRow>;
         variant: VariantProps<typeof rowVariants>["variant"];
       }) => ReactNode);
   collapsable?: boolean;
   sortable?: boolean;
   colSpan?: number;
   title?: boolean;
-} & ({ accessor: string } | { accessorAlias: string });
-
-function Column(props: ColumnProps) {
-  props;
-  return null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ColumnBody({ collapsable, title, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
-  const tableRowctx = useTableRowContext();
-  const children =
-    typeof props.children === "function"
-      ? props.children({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })
-      : props.children;
-
-  const accessor = getAccessor(props);
-  if ("accessorAlias" in props) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { accessorAlias, ...rest } = props;
-    props = { accessor, ...rest };
-  }
-
-  delete props.sortable;
-
-  if (collapsable && props.row.getCanExpand()) {
-    return (
-      <Table.Cell {...props}>
-        {children ?? (props.row.original[accessor] as ReactNode)}
-        <button className="hidden cursor-pointer sm:inline" onClick={() => props.row.toggleExpanded()}>
-          {props.row.getIsExpanded() ? (
-            <ChevronDown className="-mb-1 ml-1 h-4 w-4 opacity-90" />
-          ) : (
-            <ChevronRight className="-mb-1 ml-1 h-4 w-4 opacity-90" />
-          )}
-        </button>
-      </Table.Cell>
-    );
-  }
-
-  return <Table.Cell {...props}>{children ?? (props.row.original[accessor] as ReactNode)}</Table.Cell>;
-}
+} & ({ accessor: keyof TRow } | { accessorAlias: string });
 
 export function DataTableViewOptions() {
-  const { table } = useTableCtx();
+  const { table } = useDataTable();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -144,10 +104,10 @@ export function DataTableViewOptions() {
   );
 }
 
-export type RowsProps = {
+export type RowsProps<TRow = Record<string, unknown>> = {
   children: ReactNode;
   selectable?: boolean;
-  variant?: (row: Record<string, unknown>) => {
+  variant?: (row: TRow) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
   };
 };
@@ -183,7 +143,7 @@ function getRowColumns(
 }
 
 function Rows({ children, selectable = false, variant }: RowsProps) {
-  const table = useTableCtx();
+  const table = useDataTable();
   const [columns, title] = useColumns(children);
 
   const globalFilterFn = useCallback(
@@ -229,7 +189,6 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
               />
             </Table.Column>
           )}
-          {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
           {columns.map(({ props: { title, collapsable, className, ...props }, accessor, col }) => {
             if (table.columns.length > 0 && !col) return null;
 
@@ -268,8 +227,8 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
                   </Table.Cell>
                 )}
                 {rowColumns.map(({ props, accessor }) => {
-                  if (props.columnType === "Actions") return <ActionsBody key={accessor} {...props} row={row} />;
-                  return <ColumnBody key={accessor} {...props} row={row} />;
+                  if (props.columnType === "actions") return <Actions key={accessor} {...props} row={row} />;
+                  return <Column key={accessor} {...props} row={row} />;
                 })}
               </Table.Row>
             );
@@ -279,14 +238,56 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
   );
 }
 
-function Actions(props: ColumnProps) {
+function ColumnDummy(props: ColumnProps) {
   props;
   return null;
 }
 
+function ActionsDummy(props: ColumnProps & { type?: "dropdown" | "buttons" }) {
+  props;
+  return null;
+}
+
+function Column({ collapsable, title, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
+  const tableRowctx = useTableRowContext();
+  const children =
+    typeof props.children === "function"
+      ? props.children({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })
+      : props.children;
+
+  const accessor = getAccessor(props);
+  if ("accessorAlias" in props) {
+    const { accessorAlias, ...rest } = props;
+    props = { accessor, ...rest };
+  }
+
+  delete props.sortable;
+
+  if (collapsable && props.row.getCanExpand()) {
+    return (
+      <Table.Cell {...props}>
+        {children ?? (props.row.original[accessor] as ReactNode)}
+        <button className="hidden cursor-pointer sm:inline" onClick={() => props.row.toggleExpanded()}>
+          {props.row.getIsExpanded() ? (
+            <ChevronDown className="-mb-1 ml-1 h-4 w-4 opacity-90" />
+          ) : (
+            <ChevronRight className="-mb-1 ml-1 h-4 w-4 opacity-90" />
+          )}
+        </button>
+      </Table.Cell>
+    );
+  }
+
+  return <Table.Cell {...props}>{children ?? (props.row.original[accessor] as ReactNode)}</Table.Cell>;
+}
+
 const ActionsContext = createContext<Row<Record<string, unknown>>>(null as never);
 
-function ActionsBody({ children: childrenRaw, ...props }: ColumnProps & { row: Row<Record<string, unknown>> }) {
+function Actions({
+  type = "buttons",
+  children: childrenRaw,
+  ...props
+}: ColumnProps & { row: Row<Record<string, unknown>>; type?: "dropdown" | "buttons" }) {
   const { variant } = useTableRowContext();
   const children =
     typeof childrenRaw === "function"
@@ -294,10 +295,10 @@ function ActionsBody({ children: childrenRaw, ...props }: ColumnProps & { row: R
       : childrenRaw;
 
   return (
-    <ColumnBody {...props}>
+    <Column {...props}>
       <ActionsContext.Provider value={props.row}>
-        <div className="hidden gap-1 md:flex">{children}</div>
-        <div className="md:hidden">
+        {type === "buttons" && <div className="hidden gap-1 md:flex">{children}</div>}
+        <div className={cn(type === "buttons" && "md:hidden")}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -305,39 +306,23 @@ function ActionsBody({ children: childrenRaw, ...props }: ColumnProps & { row: R
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actiones</DropdownMenuLabel>
-              {Children.toArray(children).map(((
-                { props: { onClick, children } }: { props: ActionProps },
-                i: number
-              ) => {
-                function handleClick() {
-                  if (onClick)
-                    onClick?.({ row: props.row.original, variant: variant ?? "none", controller: props.row });
-                }
-                return (
-                  <DropdownMenuItem key={i} onClick={handleClick}>
-                    {children}
-                  </DropdownMenuItem>
-                );
-              }) as never)}
+              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+              {Children.toArray(children).map((({ props }: { props: ActionProps }, i: number) => (
+                <ActionDropdown key={i} {...props} />
+              )) as never)}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </ActionsContext.Provider>
-    </ColumnBody>
+    </Column>
   );
 }
 
-export type ActionProps = {
-  children: ReactNode;
-  className?: string;
-  onClick?: (props: {
-    row: Record<string, unknown>;
-    controller: Row<Record<string, unknown>>;
-    variant: VariantProps<typeof rowVariants>["variant"];
-  }) => void;
+export type ActionProps<TRow = Record<string, unknown>> = Omit<ButtonProps, "onClick"> & {
+  onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
 };
-function DataTableAction({ className, ...props }: ActionProps) {
+
+function Action({ className, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useContext(ActionsContext);
 
@@ -348,8 +333,19 @@ function DataTableAction({ className, ...props }: ActionProps) {
   return <Button size="sm" {...props} className={cn("h-6 px-2", className)} onClick={handleClick} />;
 }
 
+function ActionDropdown({ className, children, ...props }: ActionProps) {
+  const { variant } = useTableRowContext();
+  const row = useContext(ActionsContext);
+
+  function handleClick() {
+    if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
+  }
+
+  return <DropdownMenuItem onClick={handleClick}>{children}</DropdownMenuItem>;
+}
+
 function Loading({ children, height, className }: { children?: ReactNode; height?: string; className?: string }) {
-  const { isLoading } = useTableCtx();
+  const { isLoading } = useDataTable();
   if (!isLoading) return null;
   return (
     <div
@@ -365,7 +361,7 @@ function Loading({ children, height, className }: { children?: ReactNode; height
 }
 
 function Empty({ children, height, className }: { children?: ReactNode; height?: string; className?: string }) {
-  const { isEmpty } = useTableCtx();
+  const { isEmpty } = useDataTable();
   if (!isEmpty) return null;
   return (
     <div
@@ -388,10 +384,10 @@ export const DataTable = {
   Config: ViewOptions,
   Content: Table,
   Rows: Rows,
-  Column: Column,
+  Column: ColumnDummy,
   Loading,
   Empty,
-  Actions: Actions,
-  Action: DataTableAction,
+  Actions: ActionsDummy,
+  Action: Action,
   Pagination: DataTablePagination,
 };

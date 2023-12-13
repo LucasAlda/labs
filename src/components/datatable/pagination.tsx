@@ -1,4 +1,4 @@
-import { useTableCtx } from "@/components/datatable/hooks";
+import { useDataTable } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTableContext } from "@/lib/table";
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boolean }) {
-  const { table } = useTableCtx();
+  const { table } = useDataTable();
   const { rounded } = useTableContext();
 
   if (table.getPageCount() < 2 && table.getRowModel().flatRows.length < 10 && !allwaysShow) return null;

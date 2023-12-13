@@ -20,10 +20,10 @@ import {
 } from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useTableCtx } from "@/components/datatable/hooks";
+import { useDataTable } from "@/components/datatable/hooks";
 
 export const ColumnVisibility = ({ size }: { size: "sm" | "md" | "lg" }) => {
-  const { table, view } = useTableCtx();
+  const { table, view } = useDataTable();
 
   const columns = table
     .getAllColumns()

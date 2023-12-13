@@ -1,4 +1,4 @@
-import { useTableCtx } from "@/components/datatable/hooks";
+import { useDataTable } from "@/components/datatable/hooks";
 import { ColumnVisibility } from "@/components/datatable/sortable-list";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -8,7 +8,7 @@ import { Laptop, Monitor, Settings2, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function ViewOptions() {
-  const { view } = useTableCtx();
+  const { view } = useDataTable();
   const [size, setSize] = useState("lg");
 
   useEffect(() => {

@@ -95,7 +95,13 @@ export default function Example() {
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
             <DataTable.Actions accessorAlias="actionsCol">
-              <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 1`)}>Test</DataTable.Action>
+              <DataTable.Action
+                variant="outline"
+                className="bg-white text-slate-600"
+                onClick={({ row }) => alert(`${row.abbreviation} 1`)}
+              >
+                Test
+              </DataTable.Action>
               <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 2`)}>Test</DataTable.Action>
             </DataTable.Actions>
           </DataTable.Rows>

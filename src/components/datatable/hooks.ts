@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { DataTable, type ColumnProps, type RowsProps, type ActionProps } from "@/components/datatable/datatable";
-import { type rowVariants } from "@/lib/table";
 import {
   type SortingState,
   type RowSelectionState,
@@ -18,7 +17,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
 } from "@tanstack/react-table";
-import { type VariantProps } from "class-variance-authority";
+import { type ValueOf } from "next/dist/shared/lib/constants";
 import {
   type Dispatch,
   type SetStateAction,
@@ -64,20 +63,23 @@ function useLocalStorage<T>(key: string | undefined, defaultValue: T) {
   return [value, changeValue, changed] as const;
 }
 
+const columnTypes = { ColumnDummy: "column", ActionsDummy: "actions", SelectDummy: "select" } as const;
+
+type ColumnType = ValueOf<typeof columnTypes>;
+
 export function useColumns(children: ReactNode) {
-  const table = useTableCtx();
+  const table = useDataTable();
   const tanstackColumns = table.table.getVisibleFlatColumns();
 
-  const columns = Children.map(
-    children as never,
-    ({ props, type }: { props: ColumnProps; type?: { name: string } }) => ({
-      columnType: type?.name,
+  const columns = Children.map(children as never, ({ props, type }: { props: ColumnProps; type: { name: string } }) => {
+    const name = type.name;
+    return {
+      columnType: (name in columnTypes ? columnTypes[name as never] : undefined) as ColumnType | undefined,
       ...props,
-    })
-  ).filter((col) => {
-    const validChild = ["Column", "Actions", "Select"].includes(col.columnType ?? "NOT EXISTS");
-    if (!validChild) console.error(`Invalid child component "${col.columnType}" for DataTable, ignoring...`);
-    return validChild;
+    };
+  }).filter((col) => {
+    if (!col.columnType) console.error(`Invalid child component for DataTable, ignoring...`);
+    return col.columnType;
   });
 
   // Columns reactivity limited to accessor and accessorAlias;
@@ -245,7 +247,7 @@ export type UseTable = {
 };
 
 const emptyArray: Array<Record<string, unknown>> = [];
-export function useTable<T extends Array<Record<string, unknown>>>({
+export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow<T>>({
   data,
   sortMinDepth = 0,
   prerender = true,
@@ -319,33 +321,13 @@ export function useTable<T extends Array<Record<string, unknown>>>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  type DTColumnProps = Omit<ColumnProps, "accessor" | "accessorAlias" | "children"> & {
-    children?:
-      | ReactNode
-      | ((props: {
-          row: GetRow<T>;
-          controller: Row<GetRow<T>>;
-          variant: VariantProps<typeof rowVariants>["variant"];
-        }) => ReactNode);
-  } & ({ accessor: keyof GetRow<T> } | { accessorAlias: string });
+  type DTColumnProps = ColumnProps<TRow>;
 
   type DateTable = Omit<typeof DataTable, "Column" | "Rows" | "Actions" | "Action"> & {
-    Rows: (
-      props: Omit<RowsProps, "variant"> & {
-        variant?: (row: GetRow<T>) => ReturnType<NonNullable<RowsProps["variant"]>>;
-      }
-    ) => JSX.Element;
+    Rows: (props: RowsProps<TRow>) => JSX.Element;
     Column: (props: DTColumnProps) => null;
     Actions: (props: DTColumnProps) => null;
-    Action: (
-      props: Omit<ActionProps, "onClick"> & {
-        onClick: (props: {
-          row: GetRow<T>;
-          controller: Row<GetRow<T>>;
-          variant: VariantProps<typeof rowVariants>["variant"];
-        }) => void;
-      }
-    ) => JSX.Element;
+    Action: (props: ActionProps<TRow>) => JSX.Element;
   };
 
   const returnValue = useMemo(
@@ -364,10 +346,9 @@ export function useTable<T extends Array<Record<string, unknown>>>({
     [columns, data, defaultView, globalFilter, prerender, table, view]
   );
 
-  // FIX
   return [returnValue, DataTable as unknown as DateTable] as const;
 }
 
-export const DataTableCtx = createContext<UseTable>(null as unknown as UseTable);
+export const DataTableContext = createContext<UseTable>(null as unknown as UseTable);
 
-export const useTableCtx = () => useContext(DataTableCtx);
+export const useDataTable = () => useContext(DataTableContext);
