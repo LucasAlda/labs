@@ -113,6 +113,7 @@ export function DataTableViewOptions() {
 export type RowsProps<TRow = Record<string, unknown>> = {
   children: ReactNode;
   selectable?: boolean;
+  onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
   variant?: (row: TRow) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
   };
@@ -152,7 +153,7 @@ function getRowColumns(
   return variantColumns;
 }
 
-function Rows({ children, selectable = false, variant }: RowsProps) {
+function Rows({ children, selectable = false, onClick, variant }: RowsProps) {
   const table = useDataTable();
   const [columns, title] = useColumns(children);
 
@@ -229,7 +230,11 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
             const rowColumns = getRowColumns(columns, row, selectedVariant, title);
 
             return (
-              <Table.Row key={row.id} variant={selectedVariant}>
+              <Table.Row
+                key={row.id}
+                variant={selectedVariant}
+                onClick={() => onClick?.({ row: row.original, controller: row, variant: selectedVariant })}
+              >
                 {selectable && (
                   <Table.Cell className="w-8">
                     <input

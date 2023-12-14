@@ -45,22 +45,11 @@ export default function Example() {
     }, 2000);
   }, []);
 
-  const view = useView("test", {
-    sm: {
-      type: false,
-      amount: false,
-      category: false,
-      code: false,
-      date: false,
-      id: false,
-      title: false,
-      actions: false,
-    },
-  });
+  const view = useView("5-view");
 
   const [table, DataTable] = useTable({
     data: data as Array<Row>,
-    sortMinDepth: 2,
+    minDepth: 2,
     pagination: 20,
     view,
   });
@@ -89,9 +78,6 @@ export default function Example() {
             <DataTable.Column accessor="date" label="Fecha" isDate />
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
-            <DataTable.Buttons accessorAlias="actionsCol" label="Acciones">
-              <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
-            </DataTable.Buttons>
           </DataTable.Rows>
         </DataTable.Content>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>

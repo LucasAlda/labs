@@ -32,7 +32,6 @@ type Row = (typeof disp)[number] & { category?: string };
 
 import { useTable, useView } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
-import { DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { generateData } from "@/faker";
 
 import { useEffect, useState } from "react";
@@ -46,7 +45,7 @@ export default function Example() {
     }, 2000);
   }, []);
 
-  const view = useView<keyof Row>("test", {
+  const view = useView("test", {
     sm: {
       type: false,
       amount: false,
@@ -66,19 +65,14 @@ export default function Example() {
     view,
   });
 
-  const [condensed, setCondensed] = useState(true);
-
   return (
     <div className="space-y-16 py-16 sm:p-16">
       <DataTable.Root table={table} variant="narrow">
         <DataTable.Header>
-          <Button onClick={() => setCondensed((p) => !p)} variant={"outline"} size="sm">
-            {condensed ? "Condensed" : "Condense"}
-          </Button>
           <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
-        <DataTable.Content condensed={condensed}>
+        <DataTable.Content>
           <DataTable.Rows
             variant={(row) => ({
               main: row?.category === "header",
@@ -98,19 +92,6 @@ export default function Example() {
             <DataTable.Buttons accessorAlias="actionsCol" label="Acciones">
               <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
             </DataTable.Buttons>
-            <DataTable.Dropdown accessorAlias="actionCol2" label="Acciones2">
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
-                    Abbreviation
-                  </DataTable.DropdownItem>
-                  <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 2`)}>
-                    Amount
-                  </DataTable.DropdownItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            </DataTable.Dropdown>
           </DataTable.Rows>
         </DataTable.Content>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
