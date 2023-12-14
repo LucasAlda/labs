@@ -61,7 +61,7 @@ export default function Example() {
 
   const [table, DataTable] = useTable({
     data: data as Array<Row>,
-    sortMinDepth: 2,
+    minDepth: 2,
     pagination: 20,
     view,
   });

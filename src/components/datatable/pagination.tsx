@@ -1,7 +1,7 @@
 import { useDataTable } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useTableContext } from "@/lib/table";
+import { useTableContext } from "@/components/datatable/table";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 

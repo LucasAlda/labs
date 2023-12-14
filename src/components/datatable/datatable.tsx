@@ -12,7 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ViewOptions } from "@/components/datatable/view-options";
-import { Table, type TableCardProps, TableContainer, type rowVariants, useTableRowContext } from "@/lib/table";
+import {
+  Table,
+  type TableCardProps,
+  TableContainer,
+  type rowVariants,
+  useTableRowContext,
+} from "@/components/datatable/table";
 import { cn, formatNumber } from "@/lib/utils";
 import { type Row } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
@@ -123,19 +129,23 @@ function getRowColumns(
 
   const titleIndex = columns.findIndex((col) => col.props.title);
 
-  const firstValue = columns.findIndex((col) => {
+  let firstValue = columns.findIndex((col) => {
     const value = row.original[col.accessor];
     if (col.props.title) return false;
 
     return value || col.props.children;
   });
 
-  if (firstValue < 1) return columns;
+  if (firstValue === 0) return columns;
 
   const variantColumns: typeof columns = [...columns];
   const firstCol = variantColumns[0]!;
 
   if (titleIndex > 0) variantColumns[titleIndex] = firstCol;
+
+  if (firstValue === -1) {
+    firstValue = columns.length;
+  }
 
   variantColumns.splice(0, firstValue, { ...title, props: { ...title.props, colSpan: firstValue } });
 
@@ -148,7 +158,10 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
 
   const globalFilterFn = useCallback(
     (row: Row<Record<string, unknown>>) => {
+      if (row.depth < table.minDepth) return true;
+
       const res = row.getVisibleCells().some((cell) => {
+        if (!table.globalFilter) return true;
         const value = cell.getValue();
         if (value instanceof Date) {
           return (
@@ -170,7 +183,7 @@ function Rows({ children, selectable = false, variant }: RowsProps) {
 
       return res;
     },
-    [table.globalFilter]
+    [table.globalFilter, table.minDepth]
   );
 
   if (!table.prerender && table.columns.length === 0) return null;

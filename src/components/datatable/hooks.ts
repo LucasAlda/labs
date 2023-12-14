@@ -135,8 +135,9 @@ type Orders = {
   lg?: string[];
 };
 
+export type ViewSizes = "sm" | "md" | "lg";
 export function useView(key: string | undefined, defaultVisibility?: Visibilitys) {
-  const [size, setSize] = useState<"sm" | "md" | "lg">("lg");
+  const [size, setSize] = useState<ViewSizes>("lg");
   const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key}_order`, {});
   const [visibilitys, setVisibilitys, visibilityChanged] = useLocalStorage<Visibilitys>(
     `table_${key}_columns`,
@@ -189,7 +190,7 @@ export function useView(key: string | undefined, defaultVisibility?: Visibilitys
   );
 
   const toggleVisibility = useCallback(
-    (col: string, value: boolean, size: "sm" | "md" | "lg") => {
+    (col: string, value: boolean, size: ViewSizes) => {
       changeVisibility((p) => {
         p = p ?? {};
         p[col] = value;
@@ -200,10 +201,19 @@ export function useView(key: string | undefined, defaultVisibility?: Visibilitys
   );
 
   const getIsVisible = useCallback(
-    (col: string, size: "sm" | "md" | "lg") => {
+    (col: string, size: ViewSizes) => {
       return visibilitys[size]?.[col] ?? true;
     },
     [visibilitys]
+  );
+
+  const reset = useCallback(
+    (onSize = size) => {
+      console.log(onSize, size);
+      changeVisibility(() => defaultVisibility?.[onSize ?? size] as VisibilityState, onSize ?? size);
+      changeOrder(() => [], onSize ?? size);
+    },
+    [changeOrder, changeVisibility, defaultVisibility, size]
   );
 
   return useMemo(
@@ -215,6 +225,7 @@ export function useView(key: string | undefined, defaultVisibility?: Visibilitys
       size,
       changeOrder,
       changeVisibility,
+      reset,
       toggleVisibility,
       isChanged: key && (orderChanged || visibilityChanged),
       save,
@@ -227,6 +238,7 @@ export function useView(key: string | undefined, defaultVisibility?: Visibilitys
       order,
       orderChanged,
       orders,
+      reset,
       save,
       size,
       toggleVisibility,
@@ -249,6 +261,7 @@ export type UseTable = {
   globalFilter: string;
   setGlobalFilter: Dispatch<SetStateAction<string>>;
   view: ReturnType<typeof useView>;
+  minDepth: number;
   prerender?: boolean;
   isEmpty: boolean;
   isLoading: boolean;
@@ -257,14 +270,14 @@ export type UseTable = {
 const emptyArray: Array<Record<string, unknown>> = [];
 export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow<T>>({
   data,
-  sortMinDepth = 0,
+  minDepth = 0,
   prerender = true,
   pagination,
   view,
 }: {
   key?: string;
   data: T | undefined;
-  sortMinDepth?: number;
+  minDepth?: number;
   prerender?: boolean;
   pagination?: number;
   view?: ReturnType<typeof useView>;
@@ -282,13 +295,13 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
 
   const autoDepthSort = useCallback(
     (a: Row<Record<string, unknown>>, b: Row<Record<string, unknown>>, columnId: string) => {
-      if (a.depth < sortMinDepth || b.depth < sortMinDepth) return 0;
+      if (a.depth < minDepth || b.depth < minDepth) return 0;
       if (a.getValue(columnId) instanceof Date && b.getValue(columnId) instanceof Date) {
         return sortingFns.datetime(a, b, columnId);
       }
       return sortingFns.alphanumeric(a, b, columnId);
     },
-    [sortMinDepth]
+    [minDepth]
   );
 
   const tanstackColumns = useMemo(
@@ -348,12 +361,13 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         columns,
         view: view ?? defaultView,
         prerender,
+        minDepth,
         isEmpty: data?.length === 0,
         isLoading: data === undefined,
         globalFilter,
         setGlobalFilter,
       } satisfies UseTable),
-    [columns, data, defaultView, globalFilter, prerender, table, view]
+    [columns, data, defaultView, globalFilter, minDepth, prerender, table, view]
   );
 
   return [returnValue, DataTable as unknown as DateTable] as const;

@@ -1,4 +1,4 @@
-import { useDataTable } from "@/components/datatable/hooks";
+import { type ViewSizes, useDataTable } from "@/components/datatable/hooks";
 import { ColumnVisibility } from "@/components/datatable/sortable-list";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 
 export function ViewOptions() {
   const { view } = useDataTable();
-  const [size, setSize] = useState("lg");
+  const [size, setSize] = useState<ViewSizes>("lg");
 
   useEffect(() => {
     setSize(view.size);
@@ -25,11 +25,14 @@ export function ViewOptions() {
       </PopoverTrigger>
       <PopoverContent className="w-64" align="end">
         <div className="grid gap-2">
-          <div className="mb-2 space-y-2">
+          <div className="mb-2 flex items-center justify-between">
             <h4 className="font-medium leading-none">Columnas</h4>
+            <Button size="sm" variant="link" className="text-slate-400" onClick={() => view.reset(size)}>
+              Reset
+            </Button>
           </div>
 
-          <Tabs value={size} onValueChange={setSize}>
+          <Tabs value={size} onValueChange={(value) => setSize(value as ViewSizes)}>
             <TabsList className="h-8 w-full">
               <TabsTrigger className="h-6 w-full" value="sm">
                 <Smartphone className={cn("h-3.5 w-3.5", "sm" === view.size && "!stroke-[3px] !text-blue-500")} />
