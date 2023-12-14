@@ -46,7 +46,7 @@ export default function Example() {
     }, 2000);
   }, []);
 
-  const view = useView("test", {
+  const view = useView<keyof Row>("test", {
     sm: {
       type: false,
       amount: false,
