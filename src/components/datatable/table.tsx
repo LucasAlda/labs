@@ -341,10 +341,10 @@ const TableCell = memo(function TableCell({
   );
 });
 
-const containerVariants = cva("flex flex-col overflow-hidden pt-3 sm:mx-5", {
+const containerVariants = cva("flex flex-col overflow-hidden ----pt-3 sm:mx-5", {
   variants: {
     variant: {
-      card: "overflow-auto border-y border-slate-100 bg-white shadow shadow-slate-150 sm:rounded-lg sm:border-x sm:px-3 sm:py-4",
+      card: "overflow-auto border-y border-slate-100 bg-white shadow shadow-slate-150 sm:rounded-lg sm:border-x sm:px-3 sm:pt-1 sm:pb-4",
       island: "",
       narrow: "border-y border-slate-150 bg-white pb-0 shadow shadow-slate-150 sm:rounded-lg sm:border-x",
     },
@@ -372,7 +372,7 @@ const TableContainerHeader = ({ children, className }: { children: ReactNode; cl
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 px-2 pb-2.5 sm:px-0 lg:gap-4",
+        "flex items-center justify-between gap-2 px-2 pb-2.5 pt-3 sm:px-0 lg:gap-4",
         { "sm:px-3": ctx.rounded === "none" },
         className
       )}

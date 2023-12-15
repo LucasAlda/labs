@@ -404,7 +404,8 @@ function DatabaseButton({ className, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useContext(ActionsContext);
 
-  function handleClick() {
+  function handleClick(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
+    e.stopPropagation();
     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
   }
 
@@ -415,7 +416,8 @@ function DatabaseDropdownItem({ className, children, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useContext(ActionsContext);
 
-  function handleClick() {
+  function handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    e.stopPropagation();
     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
   }
 

@@ -56,13 +56,14 @@ const MainMenu = ({ setShow }: { setShow: (show: boolean) => void }) => {
   return (
     <Menu onNavigate={() => setShow(false)}>
       <Menu.Dropdown path="/examples" label="Ejemplos">
-        <Menu.Option path="/1-start">Start</Menu.Option>
-        <Menu.Option path="/2-extras">Extras</Menu.Option>
-        <Menu.Option path="/3-variants">Variants</Menu.Option>
-        <Menu.Option path="/4-subheaders">Subheaders</Menu.Option>
-        <Menu.Option path="/5-view">View</Menu.Option>
-        <Menu.Option path="/6-action">Actions</Menu.Option>
-        <Menu.Option path="/7-complete">Complete</Menu.Option>
+        <Menu.Option path="/start">Start</Menu.Option>
+        <Menu.Option path="/no-container">No container</Menu.Option>
+        <Menu.Option path="/extras">Extras</Menu.Option>
+        <Menu.Option path="/variants">Variants</Menu.Option>
+        <Menu.Option path="/subheaders">Subheaders</Menu.Option>
+        <Menu.Option path="/view">View</Menu.Option>
+        <Menu.Option path="/action">Actions</Menu.Option>
+        <Menu.Option path="/complete">Complete</Menu.Option>
       </Menu.Dropdown>
     </Menu>
   );
