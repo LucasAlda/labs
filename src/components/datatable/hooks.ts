@@ -71,9 +71,11 @@ function useLocalStorage<T>(key: string | undefined, defaultValue: T) {
 
 const columnTypes = {
   ColumnDummy: "column",
+  Column: "column",
   ButtonsDummy: "buttons",
+  Buttons: "buttons",
   DropdownDummy: "dropdown",
-  SelectDummy: "select",
+  Dropdown: "dropdown",
 } as const;
 
 type ColumnType = ValueOf<typeof columnTypes>;
