@@ -5,6 +5,7 @@ import {
   type RowsProps,
   type ActionProps,
   type DataTableRootProps,
+  type ColumnPropsGeneric,
 } from "@/components/datatable/datatable";
 import {
   type SortingState,
@@ -36,7 +37,7 @@ import {
   Children,
 } from "react";
 
-export function getAccessor(column: ColumnProps) {
+export function getAccessor(column: ColumnPropsGeneric) {
   return "accessor" in column ? column.accessor : column.accessorAlias;
 }
 
@@ -79,21 +80,21 @@ const columnTypes = {
 
 type ColumnType = ValueOf<typeof columnTypes>;
 
-export function useColumns(children: ReactNode) {
+export function useColumnsFromChildren(children: ReactNode) {
   const table = useDataTable();
-  const tanstackColumns = table.table.getVisibleFlatColumns();
 
   const columns = Children.map(
     children as never,
-    ({ props, type }: { props: ColumnProps; type?: { name: string } }) => {
+    ({ props, type }: { props: ColumnPropsGeneric; type?: { name: string } }) => {
       const name = type?.name ?? "NO EXISTS";
       return {
-        columnType: (name in columnTypes ? columnTypes[name as never] : undefined) as ColumnType | undefined,
+        columnType: ((name in columnTypes ? columnTypes[name as never] : undefined) ?? "NOT EXISTS") as ColumnType,
         ...props,
-      };
+      } satisfies ColumnProps;
     }
   ).filter((col) => {
-    if (!col.columnType) console.error(`Invalid child component for DataTable, ignoring...`, col);
+    if (col.columnType === ("NOT EXISTS" as ColumnType))
+      console.error(`Invalid child component for DataTable, ignoring...`, col);
     return col.columnType;
   });
 
@@ -102,6 +103,13 @@ export function useColumns(children: ReactNode) {
     table.setColumns(columns);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns.map((col) => getAccessor(col)).join(",")]);
+
+  return columns;
+}
+
+export function useColumns(columns: ColumnProps[]) {
+  const table = useDataTable();
+  const tanstackColumns = table.table.getVisibleFlatColumns();
 
   const sortedColumns = columns.sort((a, b) => {
     const aOrder = table.view.order?.indexOf(getAccessor(a)) ?? -1;
