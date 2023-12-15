@@ -59,18 +59,11 @@ export default function Example() {
     },
   });
 
-  const [selected, setSelected] = useState<string[]>([]);
-
   const [table, DataTable] = useTable({
     data: data as Array<Row>,
     minDepth: 2,
     pagination: 20,
     view,
-    selection: {
-      selected: selected,
-      setSelected: setSelected,
-      selectionFn: (row) => row.id,
-    },
   });
 
   const [condensed, setCondensed] = useState(true);

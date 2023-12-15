@@ -121,7 +121,6 @@ export function DataTableViewOptions() {
 
 export type RowsProps<TRow = Record<string, unknown>> = {
   children: ReactNode;
-  selectable?: boolean;
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
   variant?: (row: TRow) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
@@ -162,7 +161,7 @@ function getRowColumns(
   return variantColumns;
 }
 
-function Rows({ children, selectable = false, onClick, variant }: RowsProps) {
+function Rows({ children, onClick, variant }: RowsProps) {
   const table = useDataTable();
   const [columns, title] = useColumns(children);
 
@@ -203,15 +202,6 @@ function Rows({ children, selectable = false, onClick, variant }: RowsProps) {
     <>
       <Table.Head>
         <tr>
-          {selectable && (
-            <Table.Column className="w-8">
-              <input
-                type="checkbox"
-                checked={table.table.getIsAllRowsSelected()}
-                onChange={(e) => table.table.toggleAllRowsSelected(e.target.checked)}
-              />
-            </Table.Column>
-          )}
           {columns.map(({ props: { title, collapsable, className, columnType, ...props }, accessor, col }) => {
             if (table.columns.length > 0 && !col) return null;
 
@@ -248,15 +238,6 @@ function Rows({ children, selectable = false, onClick, variant }: RowsProps) {
                 variant={selectedVariant}
                 onClick={() => onClick?.({ row: row.original, controller: row, variant: selectedVariant })}
               >
-                {selectable && (
-                  <Table.Cell className="w-8">
-                    <input
-                      type="checkbox"
-                      checked={row.getIsSelected()}
-                      onChange={(e) => row.toggleSelected(e.target.checked)}
-                    />
-                  </Table.Cell>
-                )}
                 {rowColumns.map(({ props, accessor }) => {
                   if (props.columnType === "buttons") return <Buttons key={accessor} {...props} row={row} />;
                   if (props.columnType === "dropdown") return <DatabaseDropdown key={accessor} {...props} row={row} />;

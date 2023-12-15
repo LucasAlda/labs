@@ -8,7 +8,6 @@ import {
 } from "@/components/datatable/datatable";
 import {
   type SortingState,
-  type RowSelectionState,
   type Updater,
   type VisibilityState,
   type PaginationState,
@@ -292,16 +291,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   prerender?: boolean;
   pagination?: number;
   view?: ReturnType<typeof useView>;
-  selection?: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    selected: Array<any>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setSelected: Dispatch<SetStateAction<Array<any>>>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    selectionFn: (row: TRow) => any;
-  };
 }) {
-  const [selected, setSelected] = useState<RowSelectionState>({});
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [paginationState, setPaginationState] = useState<PaginationState>(() => ({
@@ -341,7 +331,6 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
       columnVisibility: view?.visibility ?? defaultView.visibility,
       expanded,
       pagination: paginationState,
-      rowSelection: selected,
     },
     onGlobalFilterChange: setGlobalFilter,
     onExpandedChange: setExpanded,
@@ -349,7 +338,6 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     onPaginationChange: setPaginationState,
     getSubRows: useCallback((row: Record<string, unknown>) => row.subRows, []) as never,
     onColumnVisibilityChange: view?.changeVisibility ?? defaultView.changeVisibility,
-    onRowSelectionChange: setSelected,
     enableRowSelection: true,
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
