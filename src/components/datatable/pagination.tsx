@@ -12,8 +12,8 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
   if (table.getPageCount() < 2 && table.getRowModel().flatRows.length < 10 && !allwaysShow) return null;
   return (
     <div
-      className={cn("mt-auto flex items-center justify-between pt-3 text-slate-500", {
-        "mb-3": rounded !== "all",
+      className={cn("mt-auto flex items-center justify-between pt-2 text-slate-500", {
+        "pb-2": rounded !== "all",
         "border-t border-slate-200 px-3": rounded === "none",
       })}
     >
@@ -24,7 +24,8 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
-          <p className="text-xs">Filas por página</p>
+          <p className="hidden text-xs sm:block">Filas por página</p>
+          <p className="text-xs sm:hidden">Filas</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {

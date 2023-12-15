@@ -217,11 +217,15 @@ function Rows({ children, selectable = false, onClick, variant }: RowsProps) {
 
             return (
               <Table.Column key={accessor} {...props}>
-                <DataTableColumnHeader
-                  column={col}
-                  title={props.label ?? ""}
-                  labelPlace={props.isNumber ? "right" : props.isDate ? "center" : props.align}
-                />
+                <div
+                  className={cn(columnType === "buttons" && "hidden sm:block", columnType === "dropdown" && "hidden")}
+                >
+                  <DataTableColumnHeader
+                    column={col}
+                    title={props.label ?? ""}
+                    labelPlace={props.isNumber ? "right" : props.isDate ? "center" : props.align}
+                  />
+                </div>
               </Table.Column>
             );
           })}
