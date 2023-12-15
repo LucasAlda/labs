@@ -28,7 +28,11 @@ import { type ReactNode, useCallback, startTransition, Children, createContext, 
 import { DataTableContext, useDataTable, type UseTable, getAccessor, useColumns } from "@/components/datatable/hooks";
 import { DataTablePagination } from "@/components/datatable/pagination";
 
-function DataTableRoot({ table, ...props }: TableCardProps & { children: ReactNode; table: UseTable }) {
+export type DataTableRootProps<TRow = Record<string, unknown>> = TableCardProps & {
+  children: ReactNode;
+  table: UseTable<TRow>;
+};
+function DataTableRoot({ table, ...props }: DataTableRootProps) {
   return (
     <DataTableContext.Provider value={table}>
       <TableContainer {...props} />
@@ -76,6 +80,11 @@ export type ColumnProps<TRow = Record<string, unknown>> = {
   sortable?: boolean;
   colSpan?: number;
   title?: boolean;
+  showEmpty?: (props: {
+    row: TRow;
+    controller: Row<TRow>;
+    variant: VariantProps<typeof rowVariants>["variant"];
+  }) => ReactNode;
 } & ({ accessor: keyof TRow } | { accessorAlias: string });
 
 export function DataTableViewOptions() {
@@ -276,13 +285,15 @@ function Column({
   collapsable,
   title,
   columnType,
+  showEmpty,
+  children: childrenRaw,
   ...props
 }: ColumnProps & { row: Row<Record<string, unknown>>; columnType?: string }) {
   const tableRowctx = useTableRowContext();
   const children =
-    typeof props.children === "function"
-      ? props.children({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })
-      : props.children;
+    typeof childrenRaw === "function"
+      ? childrenRaw({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })
+      : childrenRaw;
 
   const accessor = getAccessor(props);
   if ("accessorAlias" in props) {
@@ -291,6 +302,10 @@ function Column({
   }
 
   delete props.sortable;
+
+  if (showEmpty?.({ row: props.row.original, controller: props.row, variant: tableRowctx.variant ?? "none" })) {
+    return <Table.Cell {...props}></Table.Cell>;
+  }
 
   if (collapsable && props.row.getCanExpand()) {
     return (

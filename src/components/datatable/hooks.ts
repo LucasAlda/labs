@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { DataTable, type ColumnProps, type RowsProps, type ActionProps } from "@/components/datatable/datatable";
+import {
+  DataTable,
+  type ColumnProps,
+  type RowsProps,
+  type ActionProps,
+  type DataTableRootProps,
+} from "@/components/datatable/datatable";
 import {
   type SortingState,
   type RowSelectionState,
@@ -251,14 +257,14 @@ export function useView<T extends string | symbol | number = string>(
   );
 }
 
-type GetRow<T> = T extends Array<infer K>
+type GetRow<T> = T extends Array<infer K extends Record<string, unknown>>
   ? K extends { subRows: unknown }
     ? { "Provide a type on useTable": true }
     : K
   : never;
 
-export type UseTable = {
-  table: Table<Record<string, unknown>>;
+export type UseTable<TRow = Record<string, unknown>> = {
+  table: Table<TRow>;
   setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
   columns: ColumnProps[];
   globalFilter: string;
@@ -284,6 +290,14 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   prerender?: boolean;
   pagination?: number;
   view?: ReturnType<typeof useView>;
+  selection?: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selected: Array<any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSelected: Dispatch<SetStateAction<Array<any>>>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selectionFn: (row: TRow) => any;
+  };
 }) {
   const [selected, setSelected] = useState<RowSelectionState>({});
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
@@ -347,7 +361,11 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
 
   type DTColumnProps = ColumnProps<TRow>;
 
-  type DateTable = Omit<typeof DataTable, "Column" | "Rows" | "Buttons" | "Button" | "Dropdown" | "DropdownItem"> & {
+  type DateTable = Omit<
+    typeof DataTable,
+    "Root" | "Column" | "Rows" | "Buttons" | "Button" | "Dropdown" | "DropdownItem"
+  > & {
+    Root: (props: DataTableRootProps<TRow>) => JSX.Element;
     Rows: (props: RowsProps<TRow>) => JSX.Element;
     Column: (props: DTColumnProps) => null;
     Buttons: (props: ColumnProps<TRow> & { responsive?: boolean }) => null;
@@ -371,9 +389,9 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         setGlobalFilter,
       } satisfies UseTable),
     [columns, data, defaultView, globalFilter, minDepth, prerender, table, view]
-  );
+  ) as UseTable<TRow>;
 
-  return [returnValue, DataTable as unknown as DateTable] as const;
+  return [returnValue, DataTable as DateTable] as const;
 }
 
 export const DataTableContext = createContext<UseTable>(null as unknown as UseTable);

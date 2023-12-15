@@ -59,11 +59,18 @@ export default function Example() {
     },
   });
 
+  const [selected, setSelected] = useState<string[]>([]);
+
   const [table, DataTable] = useTable({
     data: data as Array<Row>,
     minDepth: 2,
     pagination: 20,
     view,
+    selection: {
+      selected: selected,
+      setSelected: setSelected,
+      selectionFn: (row) => row.id,
+    },
   });
 
   const [condensed, setCondensed] = useState(true);
@@ -81,6 +88,7 @@ export default function Example() {
         <DataTable.Content condensed={condensed}>
           <DataTable.Rows
             onClick={({ row }) => alert(`row ${row.abbreviation}`)}
+            // selectable={{row} => }
             variant={(row) => ({
               main: row?.category === "header",
               gray: row?.category === "subheader",
@@ -96,10 +104,18 @@ export default function Example() {
             <DataTable.Column accessor="date" label="Fecha" isDate />
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
-            <DataTable.Buttons accessorAlias="actionsCol" label="Acciones">
+            <DataTable.Buttons
+              showEmpty={({ variant }) => variant !== "none"}
+              accessorAlias="actionsCol"
+              label="Acciones"
+            >
               <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
             </DataTable.Buttons>
-            <DataTable.Dropdown accessorAlias="actionCol2" label="Acciones2">
+            <DataTable.Dropdown
+              showEmpty={({ variant }) => variant !== "none"}
+              accessorAlias="actionCol2"
+              label="Acciones2"
+            >
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
