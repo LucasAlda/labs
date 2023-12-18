@@ -357,17 +357,15 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     getSortedRowModel: getSortedRowModel(),
   });
 
-  type DTColumnProps = ColumnProps<TRow>;
-
   type DateTable = Omit<
     typeof DataTable,
     "Root" | "Column" | "Rows" | "Buttons" | "Button" | "Dropdown" | "DropdownItem"
   > & {
     Root: (props: DataTableRootProps<TRow>) => JSX.Element;
     Rows: (props: RowsProps<TRow>) => JSX.Element;
-    Column: (props: DTColumnProps) => null;
-    Buttons: (props: ColumnProps<TRow> & { responsive?: boolean }) => null;
-    Dropdown: (props: ColumnProps<TRow>) => null;
+    Column: (props: ColumnPropsGeneric<TRow>) => null;
+    Buttons: (props: ColumnPropsGeneric<TRow> & { responsive?: boolean }) => null;
+    Dropdown: (props: ColumnPropsGeneric<TRow>) => null;
     Button: (props: ActionProps<TRow>) => JSX.Element;
     DropdownItem: (props: ActionProps<TRow>) => JSX.Element;
   };

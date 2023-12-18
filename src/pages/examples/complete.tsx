@@ -90,7 +90,9 @@ export default function Example() {
           >
             <DataTable.Column title collapsable accessor="type" label="Tipo" align="center" />
             <DataTable.Column accessor="title" label="Concepto" align="center" />
-            <DataTable.Column accessor="code" label="Codigo" align="right" />
+            <DataTable.Column accessor="code" label="Codigo" align="right">
+              {({ row }) => <div>{row.code}</div>}
+            </DataTable.Column>
             <DataTable.Column accessor="abbreviation" label="Abreviatura" align="center" />
             <DataTable.Column accessor="quantity" label="Cantidad" align="right" />
             <DataTable.Column accessor="price" label="Precio" isNumber />

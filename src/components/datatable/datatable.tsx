@@ -253,7 +253,13 @@ function Rows({ children, onClick, variant }: RowsProps) {
               <Table.Row
                 key={row.id}
                 variant={selectedVariant}
-                onClick={() => onClick?.({ row: row.original, controller: row, variant: selectedVariant })}
+                onClick={(e) => {
+                  if (!(e.target instanceof HTMLTableCellElement) && !(e.target instanceof HTMLTableRowElement)) {
+                    e.stopPropagation();
+                    return;
+                  }
+                  onClick?.({ row: row.original, controller: row, variant: selectedVariant });
+                }}
               >
                 <RowContext.Provider value={row}>
                   {rowColumns.map(({ props, accessor }) => {
