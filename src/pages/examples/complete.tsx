@@ -64,6 +64,17 @@ export default function Example() {
     minDepth: 2,
     pagination: 20,
     view,
+    filter: (row, search, filter) => {
+      if (search === "secret") return row.original.type === "CEDEARS";
+      return filter(row);
+    },
+    sort: {
+      actionsCol: (a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return b.date.getTime() - a.date.getTime();
+      },
+    },
   });
 
   const [condensed, setCondensed] = useState(true);
@@ -81,7 +92,6 @@ export default function Example() {
         <DataTable.Content condensed={condensed}>
           <DataTable.Rows
             onClick={({ row }) => alert(`row ${row.abbreviation}`)}
-            // selectable={{row} => }
             variant={(row) => ({
               main: row?.category === "header",
               gray: row?.category === "subheader",

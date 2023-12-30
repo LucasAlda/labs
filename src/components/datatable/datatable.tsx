@@ -48,7 +48,7 @@ function DataTableRoot({ table, ...props }: DataTableRootProps) {
 }
 
 function Title({ children, className }: { children?: ReactNode; className?: string }) {
-  return <h3 className={cn("font-medium leading-none text-slate-800", className)}>{children}</h3>;
+  return <h3 className={cn("text-sm font-medium leading-none text-slate-800", className)}>{children}</h3>;
 }
 
 function Search({ className }: { className?: string }) {
@@ -184,36 +184,6 @@ function Rows({ children, onClick, variant, className }: RowsProps) {
   const columnsProps = useColumnsFromChildren(children);
   const [columns, title] = useColumns(columnsProps);
 
-  const globalFilterFn = useCallback(
-    (row: Row<Record<string, unknown>>) => {
-      if (row.depth < table.minDepth) return true;
-
-      const res = row.getVisibleCells().some((cell) => {
-        if (!table.globalFilter) return true;
-        const value = cell.getValue();
-        if (value instanceof Date) {
-          return (
-            format(value, "dd-MM-yyyy").includes(table.globalFilter) ||
-            format(value, "dd/MM/yyyy").includes(table.globalFilter)
-          );
-        } else if (typeof value === "number") {
-          return (
-            value.toString().toUpperCase().includes(table.globalFilter.toUpperCase()) ||
-            formatNumber(value).toUpperCase().includes(table.globalFilter.toUpperCase())
-          );
-        }
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        if (typeof value === "string") {
-          return value.toUpperCase().includes(table.globalFilter.toUpperCase());
-        }
-        return value === table.globalFilter;
-      });
-
-      return res;
-    },
-    [table.globalFilter, table.minDepth]
-  );
-
   if (!table.prerender && table.columns.length === 0) return null;
   if (table.isLoading || table.isEmpty) return null;
 
@@ -247,39 +217,36 @@ function Rows({ children, onClick, variant, className }: RowsProps) {
         </tr>
       </Table.Head>
       <tbody>
-        {table.table
-          .getRowModel()
-          .rows.filter(globalFilterFn)
-          .map((row) => {
-            const entries = Object.entries(variant?.(row.original) ?? {}) as Array<
-              [NonNullable<VariantProps<typeof rowVariants>["variant"]>, boolean]
-            >;
-            const selectedVariant = entries.find(([, value]) => value)?.[0] ?? "none";
-            const rowColumns = getRowColumns(columns, row, selectedVariant, title);
+        {table.getRows().map((row) => {
+          const entries = Object.entries(variant?.(row.original) ?? {}) as Array<
+            [NonNullable<VariantProps<typeof rowVariants>["variant"]>, boolean]
+          >;
+          const selectedVariant = entries.find(([, value]) => value)?.[0] ?? "none";
+          const rowColumns = getRowColumns(columns, row, selectedVariant, title);
 
-            return (
-              <Table.Row
-                key={row.id}
-                variant={selectedVariant}
-                className={className}
-                onClick={(e) => {
-                  if (!(e.target instanceof HTMLTableCellElement) && !(e.target instanceof HTMLTableRowElement)) {
-                    e.stopPropagation();
-                    return;
-                  }
-                  onClick?.({ row: row.original, controller: row, variant: selectedVariant });
-                }}
-              >
-                <RowContext.Provider value={row}>
-                  {rowColumns.map(({ props, accessor }) => {
-                    if (props.columnType === "buttons") return <Buttons key={accessor} {...props} />;
-                    if (props.columnType === "dropdown") return <DatabaseDropdown key={accessor} {...props} />;
-                    return <Column key={accessor} {...props} />;
-                  })}
-                </RowContext.Provider>
-              </Table.Row>
-            );
-          })}
+          return (
+            <Table.Row
+              key={row.id}
+              variant={selectedVariant}
+              className={className}
+              onClick={(e) => {
+                if (!(e.target instanceof HTMLTableCellElement) && !(e.target instanceof HTMLTableRowElement)) {
+                  e.stopPropagation();
+                  return;
+                }
+                onClick?.({ row: row.original, controller: row, variant: selectedVariant });
+              }}
+            >
+              <RowContext.Provider value={row}>
+                {rowColumns.map(({ props, accessor }) => {
+                  if (props.columnType === "buttons") return <Buttons key={accessor} {...props} />;
+                  if (props.columnType === "dropdown") return <DatabaseDropdown key={accessor} {...props} />;
+                  return <Column key={accessor} {...props} />;
+                })}
+              </RowContext.Provider>
+            </Table.Row>
+          );
+        })}
       </tbody>
     </>
   );

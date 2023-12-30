@@ -7,6 +7,7 @@ import {
   type DataTableRootProps,
   type ColumnPropsGeneric,
 } from "@/components/datatable/datatable";
+import { formatNumber } from "@/lib/utils";
 import {
   type SortingState,
   type Updater,
@@ -23,6 +24,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
 } from "@tanstack/react-table";
+import { format } from "date-fns";
 import { type ValueOf } from "next/dist/shared/lib/constants";
 import {
   type Dispatch,
@@ -276,6 +278,7 @@ export type UseTable<TRow = Record<string, unknown>> = {
   setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
   columns: ColumnProps[];
   globalFilter: string;
+  getRows: () => Row<TRow>[];
   setGlobalFilter: Dispatch<SetStateAction<string>>;
   view: ReturnType<typeof useView>;
   minDepth: number;
@@ -292,12 +295,16 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   prerender = true,
   pagination,
   view,
+  filter,
+  sort,
 }: {
   key?: string;
   data: T | undefined;
   minDepth?: number;
   prerender?: boolean;
   pagination?: number;
+  filter?: (row: Row<TRow>, search: string, filter: (row: Row<TRow>) => boolean) => boolean;
+  sort?: Record<string, (a: TRow, b: TRow) => number>;
   view?: ReturnType<typeof useView>;
 }) {
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
@@ -314,12 +321,16 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   const autoDepthSort = useCallback(
     (a: Row<Record<string, unknown>>, b: Row<Record<string, unknown>>, columnId: string) => {
       if (a.depth < minDepth || b.depth < minDepth) return 0;
+
+      const sortFn = sort?.[columnId as never] as unknown as (a: unknown, b: unknown) => number;
+      if (sortFn) return sortFn(a.original, b.original);
+
       if (a.getValue(columnId) instanceof Date && b.getValue(columnId) instanceof Date) {
         return sortingFns.datetime(a, b, columnId);
       }
       return sortingFns.alphanumeric(a, b, columnId);
     },
-    [minDepth]
+    [minDepth, sort]
   );
 
   const tanstackColumns = useMemo(
@@ -358,6 +369,41 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const globalFilterFn = useCallback(
+    (row: Row<Record<string, unknown>>) => {
+      if (row.depth < minDepth) return true;
+
+      const res = row.getVisibleCells().some((cell) => {
+        if (!globalFilter) return true;
+        const value = cell.getValue();
+        if (value instanceof Date) {
+          return (
+            format(value, "dd-MM-yyyy").includes(globalFilter) || format(value, "dd/MM/yyyy").includes(globalFilter)
+          );
+        } else if (typeof value === "number") {
+          return (
+            value.toString().toUpperCase().includes(globalFilter.toUpperCase()) ||
+            formatNumber(value).toUpperCase().includes(globalFilter.toUpperCase())
+          );
+        }
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+        if (typeof value === "string") {
+          return value.toUpperCase().includes(globalFilter.toUpperCase());
+        }
+        return value === globalFilter;
+      });
+
+      return res;
+    },
+    [minDepth, globalFilter]
+  );
+
+  const getRows = useCallback(() => {
+    return table
+      .getRowModel()
+      .rows.filter(filter ? (row) => filter(row as never, globalFilter, globalFilterFn as never) : globalFilterFn);
+  }, [filter, globalFilter, globalFilterFn, table]);
+
   type DateTable = Omit<
     typeof DataTable,
     "Root" | "Column" | "Rows" | "Buttons" | "Button" | "Dropdown" | "DropdownItem"
@@ -377,6 +423,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         table,
         setColumns,
         columns,
+        getRows,
         view: view ?? defaultView,
         prerender,
         minDepth,
@@ -386,7 +433,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         setGlobalFilter,
         paginationDefault: pagination,
       } satisfies UseTable),
-    [columns, data, defaultView, globalFilter, minDepth, pagination, prerender, table, view]
+    [columns, data, defaultView, getRows, globalFilter, minDepth, pagination, prerender, table, view]
   ) as UseTable<TRow>;
 
   return [returnValue, DataTable as DateTable] as const;
