@@ -83,16 +83,15 @@ type ColumnType = ValueOf<typeof columnTypes>;
 export function useColumnsFromChildren(children: ReactNode) {
   const table = useDataTable();
 
-  const columns = Children.map(
-    children as never,
-    ({ props, type }: { props: ColumnPropsGeneric; type?: { name: string } }) => {
-      const name = type?.name ?? "NO EXISTS";
-      return {
-        columnType: ((name in columnTypes ? columnTypes[name as never] : undefined) ?? "NOT EXISTS") as ColumnType,
-        ...props,
-      } satisfies ColumnProps;
-    }
-  ).filter((col) => {
+  const columns = Children.map(children as never, (child: { props: ColumnPropsGeneric; type?: { name: string } }) => {
+    if (!child) return null;
+    const name = child.type?.name ?? "NO EXISTS";
+    return {
+      columnType: ((name in columnTypes ? columnTypes[name as never] : undefined) ?? "NOT EXISTS") as ColumnType,
+      ...child.props,
+    } satisfies ColumnProps;
+  }).filter((col) => {
+    if (!col) return false;
     if (col.columnType === ("NOT EXISTS" as ColumnType))
       console.error(`Invalid child component for DataTable, ignoring...`, col);
     return col.columnType;
@@ -156,9 +155,9 @@ export function useView<T extends string | symbol | number = string>(
   defaultVisibility?: Visibilitys<T>
 ) {
   const [size, setSize] = useState<ViewSizes>("lg");
-  const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key}_order`, {});
+  const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key ?? ""}_order`, {});
   const [visibilitys, setVisibilitys, visibilityChanged] = useLocalStorage<Visibilitys>(
-    `table_${key}_columns`,
+    `table_${key ?? ""}_columns`,
     defaultVisibility ?? {}
   );
 
@@ -283,6 +282,7 @@ export type UseTable<TRow = Record<string, unknown>> = {
   prerender?: boolean;
   isEmpty: boolean;
   isLoading: boolean;
+  paginationDefault?: number;
 };
 
 const emptyArray: Array<Record<string, unknown>> = [];
@@ -307,6 +307,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     pageIndex: 0,
   }));
   const [globalFilter, setGlobalFilter] = useState("");
+
   const [expanded, setExpanded] = useState<ExpandedState>(true);
   const defaultView = useView(undefined);
 
@@ -383,8 +384,9 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         isLoading: data === undefined,
         globalFilter,
         setGlobalFilter,
+        paginationDefault: pagination,
       } satisfies UseTable),
-    [columns, data, defaultView, globalFilter, minDepth, prerender, table, view]
+    [columns, data, defaultView, globalFilter, minDepth, pagination, prerender, table, view]
   ) as UseTable<TRow>;
 
   return [returnValue, DataTable as DateTable] as const;

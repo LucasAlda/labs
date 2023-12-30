@@ -17,9 +17,10 @@ export type TableProps = {
   tableProps?: HTMLProps<HTMLTableElement>;
   children?: ReactNode;
   className?: string;
+  fixed?: boolean;
 } & TableContextType;
 
-export function Table({ children, className, rounded, condensed, tableProps }: TableProps) {
+export function Table({ children, className, rounded, condensed, tableProps, fixed = false }: TableProps) {
   const ctx = useTableContext();
   return (
     <>
@@ -38,7 +39,14 @@ export function Table({ children, className, rounded, condensed, tableProps }: T
             "sm:rounded-md": (rounded ?? ctx?.rounded) !== "none",
           })}
         >
-          <table className={cn("table w-full border-separate border-spacing-0 bg-white", className)} {...tableProps}>
+          <table
+            className={cn(
+              "group/table table w-full border-separate border-spacing-0 bg-white",
+              fixed && "table-fixed",
+              className
+            )}
+            {...tableProps}
+          >
             {children}
           </table>
         </div>
@@ -47,7 +55,7 @@ export function Table({ children, className, rounded, condensed, tableProps }: T
   );
 }
 
-type TableHeadProps = { children?: ReactNode } & TableContextType;
+export type TableHeadProps = { children?: ReactNode } & TableContextType;
 
 const TableHead = memo(function TableHead({ children, condensed, rounded }: TableHeadProps) {
   const ctx = useTableContext();
@@ -220,6 +228,7 @@ const cellVariants = cva(
   [
     "whitespace-nowrap border-slate-150 px-2.5 text-left text-[13px]",
     "border-t group-first:border-t-0 group-[.borderless]:border-t-0",
+    "group-[.table-fixed]/table:truncate",
   ],
   {
     variants: {
@@ -341,7 +350,7 @@ const TableCell = memo(function TableCell({
   );
 });
 
-const containerVariants = cva("flex flex-col overflow-hidden ----pt-3 sm:mx-5", {
+const containerVariants = cva("----pt-3 flex flex-col overflow-hidden sm:mx-5", {
   variants: {
     variant: {
       card: "overflow-auto border-y border-slate-100 bg-white shadow shadow-slate-150 sm:rounded-lg sm:border-x sm:px-3 sm:pt-1 sm:pb-4",

@@ -5,9 +5,18 @@ import { useTableContext } from "@/components/datatable/table";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boolean }) {
-  const { table } = useDataTable();
+export function DataTablePagination({
+  allwaysShow = false,
+  customSizes,
+}: {
+  allwaysShow?: boolean;
+  customSizes?: number[];
+}) {
+  const { table, paginationDefault } = useDataTable();
   const { rounded } = useTableContext();
+
+  const sizesSet = new Set([10, 20, 30, 40, 50, 10000, paginationDefault ?? 10, ...(customSizes ?? [])]);
+  const sizes = Array.from(sizesSet).sort((a, b) => a - b);
 
   if (table.getPageCount() < 2 && table.getRowModel().flatRows.length < 10 && !allwaysShow) return null;
   return (
@@ -36,7 +45,7 @@ export function DataTablePagination({ allwaysShow = false }: { allwaysShow?: boo
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
-              {[10, 20, 30, 40, 50, 10000].map((pageSize) => (
+              {sizes.map((pageSize) => (
                 <SelectItem key={pageSize} value={`${pageSize}`}>
                   {pageSize === 10000 ? "Máx" : pageSize}
                 </SelectItem>

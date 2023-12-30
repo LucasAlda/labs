@@ -75,6 +75,7 @@ export type ColumnPropsGeneric<TRow = Record<string, unknown>> = {
   isNumber?: boolean;
   align?: "center" | "right" | "left";
   label?: string;
+  thClassName?: string;
   className?: string;
   children?:
     | ReactNode
@@ -87,6 +88,7 @@ export type ColumnPropsGeneric<TRow = Record<string, unknown>> = {
   sortable?: boolean;
   colSpan?: number;
   title?: boolean;
+  hideLabel?: boolean;
   showEmpty?: (props: {
     row: TRow;
     controller: Row<TRow>;
@@ -132,6 +134,7 @@ export function DataTableViewOptions() {
 
 export type RowsProps<TRow = Record<string, unknown>> = {
   children: ReactNode;
+  className?: string;
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
   variant?: (row: TRow) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
@@ -141,7 +144,7 @@ export type RowsProps<TRow = Record<string, unknown>> = {
 function getRowColumns(
   columns: ReturnType<typeof useColumns>[0],
   row: Row<Record<string, unknown>>,
-  variant: string,
+  variant: VariantProps<typeof rowVariants>["variant"],
   title: ReturnType<typeof useColumns>[1]
 ) {
   if (variant === "none") return columns;
@@ -153,6 +156,7 @@ function getRowColumns(
     const value = row.original[col.accessor];
     if (col.props.title) return false;
 
+    if (col.props.showEmpty?.({ row: row.original, controller: row, variant })) return false;
     return value || col.props.children;
   });
 
@@ -175,7 +179,7 @@ function getRowColumns(
 const RowContext = createContext<Row<Record<string, unknown>>>(null as never);
 const useRow = () => useContext(RowContext);
 
-function Rows({ children, onClick, variant }: RowsProps) {
+function Rows({ children, onClick, variant, className }: RowsProps) {
   const table = useDataTable();
   const columnsProps = useColumnsFromChildren(children);
   const [columns, title] = useColumns(columnsProps);
@@ -218,17 +222,21 @@ function Rows({ children, onClick, variant }: RowsProps) {
       <Table.Head>
         <tr>
           {columns.map(
-            ({ props: { title, showEmpty, collapsable, className, columnType, ...props }, accessor, col }) => {
+            ({
+              props: { title, showEmpty, collapsable, className, thClassName, columnType, ...props },
+              accessor,
+              col,
+            }) => {
               if (table.columns.length > 0 && !col) return null;
 
               return (
-                <Table.Column key={accessor} {...props}>
+                <Table.Column key={accessor} className={cn(className, thClassName)} {...props}>
                   <div
                     className={cn(columnType === "buttons" && "hidden sm:block", columnType === "dropdown" && "hidden")}
                   >
                     <DataTableColumnHeader
                       column={col}
-                      title={props.label ?? ""}
+                      title={props.hideLabel ? "" : props.label ?? ""}
                       labelPlace={props.isNumber ? "right" : props.isDate ? "center" : props.align}
                     />
                   </div>
@@ -253,6 +261,7 @@ function Rows({ children, onClick, variant }: RowsProps) {
               <Table.Row
                 key={row.id}
                 variant={selectedVariant}
+                className={className}
                 onClick={(e) => {
                   if (!(e.target instanceof HTMLTableCellElement) && !(e.target instanceof HTMLTableRowElement)) {
                     e.stopPropagation();
@@ -291,7 +300,15 @@ function DropdownDummy(props: ColumnPropsGeneric) {
   return null;
 }
 
-function Column({ collapsable, title, columnType, showEmpty, children: childrenRaw, ...props }: ColumnProps) {
+function Column({
+  collapsable,
+  title,
+  columnType,
+  showEmpty,
+  children: childrenRaw,
+  thClassName,
+  ...props
+}: ColumnProps) {
   const row = useRow();
   const tableRowctx = useTableRowContext();
   const children =
