@@ -70,30 +70,24 @@ function Search({ className }: { className?: string }) {
   );
 }
 
+type ColumnProp<TRow, TReturn> =
+  | TReturn
+  | ((props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => TReturn);
+
 export type ColumnPropsGeneric<TRow = Record<string, unknown>> = {
   isDate?: boolean;
   isNumber?: boolean;
   align?: "center" | "right" | "left";
   label?: string;
   thClassName?: string;
-  className?: string;
-  children?:
-    | ReactNode
-    | ((props: {
-        row: TRow;
-        controller: Row<TRow>;
-        variant: VariantProps<typeof rowVariants>["variant"];
-      }) => ReactNode);
-  collapsable?: boolean;
   sortable?: boolean;
   colSpan?: number;
   title?: boolean;
   hideLabel?: boolean;
-  showEmpty?: (props: {
-    row: TRow;
-    controller: Row<TRow>;
-    variant: VariantProps<typeof rowVariants>["variant"];
-  }) => ReactNode;
+  className?: ColumnProp<TRow, string>;
+  children?: ColumnProp<TRow, ReactNode>;
+  collapsible?: ColumnProp<TRow, boolean>;
+  showEmpty?: ColumnProp<TRow, boolean>;
 } & ({ accessor: keyof TRow } | { accessorAlias: string });
 
 export type ColumnProps<TRow = Record<string, unknown>> = ColumnPropsGeneric<TRow> & {
@@ -141,6 +135,15 @@ export type RowsProps<TRow = Record<string, unknown>> = {
   };
 };
 
+function getColumnProp<T extends ColumnProp<Record<string, unknown>, unknown>>(
+  prop: T,
+  row: Row<Record<string, unknown>>,
+  variant?: VariantProps<typeof rowVariants>["variant"]
+): T extends ColumnProp<Record<string, unknown>, infer R> ? R : never {
+  if (typeof prop === "function") return prop({ row: row.original, controller: row, variant }) as never;
+  return prop as never;
+}
+
 function getRowColumns(
   columns: ReturnType<typeof useColumns>[0],
   row: Row<Record<string, unknown>>,
@@ -156,7 +159,9 @@ function getRowColumns(
     const value = row.original[col.accessor];
     if (col.props.title) return false;
 
-    if (col.props.showEmpty?.({ row: row.original, controller: row, variant })) return false;
+    const showEmpty = getColumnProp(col.props.showEmpty, row, variant);
+
+    if (showEmpty) return false;
     return value || col.props.children;
   });
 
@@ -193,7 +198,7 @@ function Rows({ children, onClick, variant, className }: RowsProps) {
         <tr>
           {columns.map(
             ({
-              props: { title, showEmpty, collapsable, className, thClassName, columnType, ...props },
+              props: { title, showEmpty, collapsible: collapsable, className, thClassName, columnType, ...props },
               accessor,
               col,
             }) => {
@@ -268,36 +273,34 @@ function DropdownDummy(props: ColumnPropsGeneric) {
 }
 
 function Column({
-  collapsable,
+  collapsible: collapsable,
   title,
+  className: _className,
+  showEmpty: _showEmpty,
+  sortable,
   columnType,
-  showEmpty,
   children: childrenRaw,
   thClassName,
   ...props
 }: ColumnProps) {
   const row = useRow();
-  const tableRowctx = useTableRowContext();
-  const children =
-    typeof childrenRaw === "function"
-      ? childrenRaw({ row: row.original, controller: row, variant: tableRowctx.variant ?? "none" })
-      : childrenRaw;
-
+  const { variant } = useTableRowContext();
   const accessor = getAccessor(props);
+
+  const children = getColumnProp(childrenRaw, row, variant);
+  const showEmpty = getColumnProp(_showEmpty, row, variant);
+  const className = getColumnProp(_className, row, variant);
+
   if ("accessorAlias" in props) {
     const { accessorAlias, ...rest } = props;
     props = { accessor, ...rest };
   }
 
-  delete props.sortable;
-
-  if (showEmpty?.({ row: row.original, controller: row, variant: tableRowctx.variant ?? "none" })) {
-    return <Table.Cell {...props}></Table.Cell>;
-  }
+  if (showEmpty) return <Table.Cell {...props} className={className}></Table.Cell>;
 
   if (collapsable && row.getCanExpand()) {
     return (
-      <Table.Cell {...props}>
+      <Table.Cell {...props} className={className}>
         {children ?? (row.original[accessor] as ReactNode)}
         <button className="hidden cursor-pointer sm:inline" onClick={() => row.toggleExpanded()}>
           {row.getIsExpanded() ? (
@@ -310,35 +313,41 @@ function Column({
     );
   }
 
-  return <Table.Cell {...props}>{children ?? (row.original[accessor] as ReactNode)}</Table.Cell>;
+  return (
+    <Table.Cell {...props} className={className}>
+      {children ?? (row.original[accessor] as ReactNode)}
+    </Table.Cell>
+  );
 }
+
+const InsideDropdownContext = createContext(false);
 
 function Buttons({ responsive = true, children: childrenRaw, ...props }: ColumnProps & { responsive?: boolean }) {
   const row = useRow();
   const { variant } = useTableRowContext();
-  const children =
-    typeof childrenRaw === "function"
-      ? childrenRaw({ row: row.original, variant: variant ?? "none", controller: row })
-      : childrenRaw;
+  const children = getColumnProp(childrenRaw, row, variant);
 
   return (
     <Column {...props}>
       <div className={cn("flex gap-1", responsive && "hidden md:flex")}>{children}</div>
       {responsive && (
         <div className={"md:hidden"}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              {Children.toArray(children).map((({ props }: { props: ActionProps }, i: number) => (
-                <DatabaseDropdownItem key={i} {...props} />
-              )) as never)}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <InsideDropdownContext.Provider value={true}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                {Children.toArray(children).map((({ props }: { props: ActionProps }, i: number) => (
+                  <DatabaseDropdownItem key={i} {...props} />
+                )) as never)} */}
+                {children}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </InsideDropdownContext.Provider>
         </div>
       )}
     </Column>
@@ -348,25 +357,24 @@ function Buttons({ responsive = true, children: childrenRaw, ...props }: ColumnP
 function DatabaseDropdown({ label, children: childrenRaw, ...props }: ColumnProps) {
   const row = useRow();
   const { variant } = useTableRowContext();
-  const children =
-    typeof childrenRaw === "function"
-      ? childrenRaw({ row: row.original, variant: variant ?? "none", controller: row })
-      : childrenRaw;
+  const children = getColumnProp(childrenRaw, row, variant);
 
   return (
     <Column {...props}>
       <div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{label ?? "Acciones"}</DropdownMenuLabel>
-            {children}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <InsideDropdownContext.Provider value={true}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{label ?? "Acciones"}</DropdownMenuLabel>
+              {children}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </InsideDropdownContext.Provider>
       </div>
     </Column>
   );
@@ -376,29 +384,31 @@ export type ActionProps<TRow = Record<string, unknown>> = Omit<ButtonProps, "onC
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
 };
 
-function DatabaseButton({ className, ...props }: ActionProps) {
+function DatabaseAction({ className, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useRow();
+  const insideDropdown = useContext(InsideDropdownContext);
 
-  function handleClick(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
+  function handleClick(e: React.MouseEvent<unknown, MouseEvent>) {
     e.stopPropagation();
     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
   }
 
+  if (insideDropdown) return <DropdownMenuItem onClick={handleClick}>{props.children}</DropdownMenuItem>;
   return <Button size="sm" {...props} className={cn("h-6 px-2", className)} onClick={handleClick} />;
 }
 
-function DatabaseDropdownItem({ className, children, ...props }: ActionProps) {
-  const { variant } = useTableRowContext();
-  const row = useRow();
+// function DatabaseDropdownItem({ className, children, ...props }: ActionProps) {
+//   const { variant } = useTableRowContext();
+//   const row = useRow();
 
-  function handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    e.stopPropagation();
-    if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
-  }
+//   function handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+//     e.stopPropagation();
+//     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
+//   }
 
-  return <DropdownMenuItem onClick={handleClick}>{children}</DropdownMenuItem>;
-}
+//   return <DropdownMenuItem onClick={handleClick}>{children}</DropdownMenuItem>;
+// }
 
 function Loading({ children, height, className }: { children?: ReactNode; height?: string; className?: string }) {
   const { isLoading } = useDataTable();
@@ -444,8 +454,8 @@ export const DataTable = {
   Loading,
   Empty,
   Buttons: ButtonsDummy,
-  Button: DatabaseButton,
+  Action: DatabaseAction,
   Dropdown: DropdownDummy,
-  DropdownItem: DatabaseDropdownItem,
+  // DropdownItem: DatabaseDropdownItem,
   Pagination: DataTablePagination,
 };

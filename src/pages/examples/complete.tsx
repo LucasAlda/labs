@@ -61,7 +61,7 @@ export default function Example() {
 
   const [table, DataTable] = useTable({
     data: data as Array<Row>,
-    minDepth: 2,
+    minDepth: 1,
     pagination: 20,
     view,
     filter: (row, search, filter) => {
@@ -98,7 +98,7 @@ export default function Example() {
               dark: row?.category === "footer",
             })}
           >
-            <DataTable.Column title collapsable accessor="type" label="Tipo" align="center" />
+            <DataTable.Column title collapsible accessor="type" label="Tipo" align="center" />
             <DataTable.Column accessor="title" label="Concepto" align="center" />
             <DataTable.Column accessor="code" label="Codigo" align="right">
               {({ row }) => <div>{row.code}</div>}
@@ -114,7 +114,8 @@ export default function Example() {
               accessorAlias="actionsCol"
               label="Acciones"
             >
-              <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
+              <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
+              <DataTable.Action onClick={({ row }) => alert(`${row.price} 1`)}>Price</DataTable.Action>
             </DataTable.Buttons>
             <DataTable.Dropdown
               showEmpty={({ variant }) => variant !== "none"}
@@ -124,12 +125,10 @@ export default function Example() {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
+                  <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
                     Abbreviation
-                  </DataTable.DropdownItem>
-                  <DataTable.DropdownItem onClick={({ row }) => alert(`${row.abbreviation} 2`)}>
-                    Amount
-                  </DataTable.DropdownItem>
+                  </DataTable.Action>
+                  <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             </DataTable.Dropdown>

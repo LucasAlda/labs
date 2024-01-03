@@ -69,7 +69,7 @@ export default function Example() {
               dark: row?.category === "footer",
             })}
           >
-            <DataTable.Column title collapsable accessor="type" label="Tipo" align="center" />
+            <DataTable.Column title collapsible accessor="type" label="Tipo" align="center" />
             <DataTable.Column accessor="title" label="Concepto" align="center" />
             <DataTable.Column accessor="code" label="Codigo" align="right" />
             <DataTable.Column accessor="abbreviation" label="Abreviatura" align="center" />

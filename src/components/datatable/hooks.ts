@@ -139,19 +139,16 @@ export function useColumns(columns: ColumnProps[]) {
   return [visibleColumns, title] as const;
 }
 
+export type ViewSizes = "sm" | "md" | "lg";
+
 type Visibilitys<T extends string | symbol | number = string> = {
-  sm?: { [k in T | (string & {})]?: boolean };
-  md?: { [k in T | (string & {})]?: boolean };
-  lg?: { [k in T | (string & {})]?: boolean };
+  [k in ViewSizes]?: { [k in T | (string & {})]?: boolean };
 };
 
 type Orders = {
-  sm?: string[];
-  md?: string[];
-  lg?: string[];
+  [k in ViewSizes]?: string[];
 };
 
-export type ViewSizes = "sm" | "md" | "lg";
 export function useView<T extends string | symbol | number = string>(
   key: string | undefined,
   defaultVisibility?: Visibilitys<T>
@@ -281,18 +278,41 @@ export type UseTable<TRow = Record<string, unknown>> = {
   getRows: () => Row<TRow>[];
   setGlobalFilter: Dispatch<SetStateAction<string>>;
   view: ReturnType<typeof useView>;
-  minDepth: number;
   prerender?: boolean;
   isEmpty: boolean;
   isLoading: boolean;
   paginationDefault?: number;
 };
 
+function genericSearch(row: Row<Record<string, unknown>>, globalFilter: string) {
+  const res = row.getVisibleCells().some((cell) => {
+    if (!globalFilter) return true;
+    const value = cell.getValue();
+    if (value instanceof Date) {
+      return format(value, "dd-MM-yyyy").includes(globalFilter) || format(value, "dd/MM/yyyy").includes(globalFilter);
+    } else if (typeof value === "number") {
+      return (
+        value.toString().toUpperCase().includes(globalFilter.toUpperCase()) ||
+        formatNumber(value).toUpperCase().includes(globalFilter.toUpperCase())
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    if (typeof value === "string") {
+      return value.toUpperCase().includes(globalFilter.toUpperCase());
+    }
+    return value === globalFilter;
+  });
+
+  return res;
+}
+
 const emptyArray: Array<Record<string, unknown>> = [];
 export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow<T>>({
   data,
   minDepth = 0,
+  maxDepth = 100,
   prerender = true,
+  filterFromLeafRows = true,
   pagination,
   view,
   filter,
@@ -301,6 +321,8 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   key?: string;
   data: T | undefined;
   minDepth?: number;
+  maxDepth?: number;
+  filterFromLeafRows?: boolean;
   prerender?: boolean;
   pagination?: number;
   filter?: (row: Row<TRow>, search: string, filter: (row: Row<TRow>) => boolean) => boolean;
@@ -313,7 +335,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     pageSize: pagination ?? 10000,
     pageIndex: 0,
   }));
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [search, setSearch] = useState("");
 
   const [expanded, setExpanded] = useState<ExpandedState>(true);
   const defaultView = useView(undefined);
@@ -343,6 +365,18 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     [columns, autoDepthSort]
   );
 
+  const globalFilterFn = useCallback(
+    (row: Row<Record<string, unknown>>) => {
+      if (row.depth < minDepth) return true;
+      if (filter)
+        return filter(row as never, search, ((row: Row<Record<string, unknown>>) =>
+          genericSearch(row, search)) as never);
+
+      return genericSearch(row, search);
+    },
+    [minDepth, filter, search]
+  );
+
   const table = useReactTable({
     data: data ?? emptyArray,
     columns: tanstackColumns,
@@ -351,8 +385,12 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
       columnVisibility: view?.visibility ?? defaultView.visibility,
       expanded,
       pagination: paginationState,
+      globalFilter: search,
     },
-    onGlobalFilterChange: setGlobalFilter,
+    maxLeafRowFilterDepth: maxDepth,
+    filterFromLeafRows,
+    globalFilterFn,
+    onGlobalFilterChange: setSearch,
     onExpandedChange: setExpanded,
     getExpandedRowModel: getExpandedRowModel(),
     onPaginationChange: setPaginationState,
@@ -369,52 +407,18 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const globalFilterFn = useCallback(
-    (row: Row<Record<string, unknown>>) => {
-      if (row.depth < minDepth) return true;
-
-      const res = row.getVisibleCells().some((cell) => {
-        if (!globalFilter) return true;
-        const value = cell.getValue();
-        if (value instanceof Date) {
-          return (
-            format(value, "dd-MM-yyyy").includes(globalFilter) || format(value, "dd/MM/yyyy").includes(globalFilter)
-          );
-        } else if (typeof value === "number") {
-          return (
-            value.toString().toUpperCase().includes(globalFilter.toUpperCase()) ||
-            formatNumber(value).toUpperCase().includes(globalFilter.toUpperCase())
-          );
-        }
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        if (typeof value === "string") {
-          return value.toUpperCase().includes(globalFilter.toUpperCase());
-        }
-        return value === globalFilter;
-      });
-
-      return res;
-    },
-    [minDepth, globalFilter]
-  );
-
   const getRows = useCallback(() => {
-    return table
-      .getRowModel()
-      .rows.filter(filter ? (row) => filter(row as never, globalFilter, globalFilterFn as never) : globalFilterFn);
-  }, [filter, globalFilter, globalFilterFn, table]);
+    return table.getRowModel().rows;
+  }, [table]);
 
-  type DateTable = Omit<
-    typeof DataTable,
-    "Root" | "Column" | "Rows" | "Buttons" | "Button" | "Dropdown" | "DropdownItem"
-  > & {
+  type DateTable = Omit<typeof DataTable, "Root" | "Column" | "Rows" | "Buttons" | "Dropdown" | "Action"> & {
     Root: (props: DataTableRootProps<TRow>) => JSX.Element;
     Rows: (props: RowsProps<TRow>) => JSX.Element;
     Column: (props: ColumnPropsGeneric<TRow>) => null;
     Buttons: (props: ColumnPropsGeneric<TRow> & { responsive?: boolean }) => null;
     Dropdown: (props: ColumnPropsGeneric<TRow>) => null;
-    Button: (props: ActionProps<TRow>) => JSX.Element;
-    DropdownItem: (props: ActionProps<TRow>) => JSX.Element;
+    Action: (props: ActionProps<TRow>) => JSX.Element;
+    // DropdownItem: (props: ActionProps<TRow>) => JSX.Element;
   };
 
   const returnValue = useMemo(
@@ -426,14 +430,13 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         getRows,
         view: view ?? defaultView,
         prerender,
-        minDepth,
         isEmpty: data?.length === 0,
         isLoading: data === undefined,
-        globalFilter,
-        setGlobalFilter,
+        globalFilter: search,
+        setGlobalFilter: setSearch,
         paginationDefault: pagination,
       } satisfies UseTable),
-    [columns, data, defaultView, getRows, globalFilter, minDepth, pagination, prerender, table, view]
+    [columns, data, defaultView, getRows, search, pagination, prerender, table, view]
   ) as UseTable<TRow>;
 
   return [returnValue, DataTable as DateTable] as const;
