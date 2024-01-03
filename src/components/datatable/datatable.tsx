@@ -182,7 +182,8 @@ function getRowColumns(
 }
 
 const RowContext = createContext<Row<Record<string, unknown>>>(null as never);
-const useRow = () => useContext(RowContext);
+export const useRow = <T extends Record<string, unknown> = Record<string, unknown>>() =>
+  useContext(RowContext) as Row<T>;
 
 function Rows({ children, onClick, variant, className }: RowsProps) {
   const table = useDataTable();
