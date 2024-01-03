@@ -55,7 +55,7 @@ export default function Example() {
           <DataTable.Title>Posicion</DataTable.Title>
           <DataTable.Search />
         </DataTable.Header>
-        <DataTable.Content>
+        <DataTable.Table>
           <DataTable.Rows
             variant={(row) => ({
               main: row?.category === "header",
@@ -73,7 +73,7 @@ export default function Example() {
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
           </DataTable.Rows>
-        </DataTable.Content>
+        </DataTable.Table>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
         <DataTable.Empty height="h-80">
           <span>No tiene Posición</span>

@@ -72,7 +72,7 @@ export default function Example() {
           <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
-        <DataTable.Content>
+        <DataTable.Table>
           <DataTable.Rows
             variant={(row) => ({
               main: row?.category === "header",
@@ -93,7 +93,7 @@ export default function Example() {
               <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
             </DataTable.Buttons>
           </DataTable.Rows>
-        </DataTable.Content>
+        </DataTable.Table>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
         <DataTable.Empty height="h-80">
           <span>No tiene Posición</span>

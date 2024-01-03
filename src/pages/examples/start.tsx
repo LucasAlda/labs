@@ -28,7 +28,7 @@ export default function Example() {
         <DataTable.Header>
           <DataTable.Title>Posicion</DataTable.Title>
         </DataTable.Header>
-        <DataTable.Content>
+        <DataTable.Table>
           <DataTable.Rows>
             <DataTable.Column accessor="type" label="Tipo" align="center" />
             <DataTable.Column accessor="title" label="Concepto" align="center" />
@@ -40,7 +40,7 @@ export default function Example() {
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
           </DataTable.Rows>
-        </DataTable.Content>
+        </DataTable.Table>
       </DataTable.Root>
     </div>
   );

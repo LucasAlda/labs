@@ -89,7 +89,7 @@ export default function Example() {
           <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
-        <DataTable.Content condensed={condensed}>
+        <DataTable.Table condensed={condensed}>
           <DataTable.Rows
             onClick={({ row }) => alert(`row ${row.abbreviation}`)}
             variant={(row) => ({
@@ -133,7 +133,7 @@ export default function Example() {
               </DropdownMenuSub>
             </DataTable.Dropdown>
           </DataTable.Rows>
-        </DataTable.Content>
+        </DataTable.Table>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
         <DataTable.Empty height="h-80">
           <span>No tiene Posición</span>

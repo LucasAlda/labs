@@ -448,7 +448,7 @@ export const DataTable = {
   Title: Title,
   Search: Search,
   Config: ViewOptions,
-  Content: Table,
+  Table,
   Rows: Rows,
   Column: ColumnDummy,
   Loading,
