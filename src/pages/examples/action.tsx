@@ -90,7 +90,7 @@ export default function Example() {
             <DataTable.Column accessor="amount" label="Monto" isNumber />
             <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
             <DataTable.Buttons accessorAlias="actionsCol" label="Acciones">
-              <DataTable.Button onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Button>
+              <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
             </DataTable.Buttons>
           </DataTable.Rows>
         </DataTable.Table>
