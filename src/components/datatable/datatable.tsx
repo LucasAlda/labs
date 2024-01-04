@@ -378,16 +378,15 @@ function Buttons({
     <Column {...props}>
       <div className={cn("flex gap-1", responsive && "hidden md:flex")}>{children}</div>
       {responsive && (
-        <div className={"md:hidden"}>
+        <div className={"sm:h-5 md:hidden"}>
           <InsideDropdownContext.Provider value={true}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-5">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {" "}
                 <DropdownMenuLabel>{label ?? "Acciones"}</DropdownMenuLabel>
                 {children}
               </DropdownMenuContent>
@@ -406,11 +405,11 @@ function DatabaseDropdown({ label, children: childrenRaw, ...props }: ColumnProp
 
   return (
     <Column {...props}>
-      <div>
+      <div className="sm:h-5">
         <InsideDropdownContext.Provider value={true}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
+              <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-5">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
