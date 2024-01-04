@@ -418,7 +418,6 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     Buttons: (props: ColumnPropsGeneric<TRow> & { responsive?: boolean }) => null;
     Dropdown: (props: ColumnPropsGeneric<TRow>) => null;
     Action: (props: ActionProps<TRow>) => JSX.Element;
-    // DropdownItem: (props: ActionProps<TRow>) => JSX.Element;
   };
 
   const returnValue = useMemo(

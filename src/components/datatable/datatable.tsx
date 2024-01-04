@@ -19,12 +19,11 @@ import {
   type rowVariants,
   useTableRowContext,
 } from "@/components/datatable/table";
-import { cn, formatNumber } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { type Row } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
-import { format } from "date-fns";
 import { ChevronDown, ChevronRight, MoreHorizontal, Settings2 } from "lucide-react";
-import { type ReactNode, useCallback, startTransition, Children, createContext, useContext } from "react";
+import { type ReactNode, startTransition, createContext, useContext } from "react";
 import {
   DataTableContext,
   useDataTable,
@@ -323,7 +322,12 @@ function Column({
 
 const InsideDropdownContext = createContext(false);
 
-function Buttons({ responsive = true, children: childrenRaw, ...props }: ColumnProps & { responsive?: boolean }) {
+function Buttons({
+  label,
+  responsive = true,
+  children: childrenRaw,
+  ...props
+}: ColumnProps & { responsive?: boolean }) {
   const row = useRow();
   const { variant } = useTableRowContext();
   const children = getColumnProp(childrenRaw, row, variant);
@@ -341,10 +345,8 @@ function Buttons({ responsive = true, children: childrenRaw, ...props }: ColumnP
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {/* <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                {Children.toArray(children).map((({ props }: { props: ActionProps }, i: number) => (
-                  <DatabaseDropdownItem key={i} {...props} />
-                )) as never)} */}
+                {" "}
+                <DropdownMenuLabel>{label ?? "Acciones"}</DropdownMenuLabel>
                 {children}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -381,35 +383,36 @@ function DatabaseDropdown({ label, children: childrenRaw, ...props }: ColumnProp
   );
 }
 
-export type ActionProps<TRow = Record<string, unknown>> = Omit<ButtonProps, "onClick"> & {
+export type ActionProps<TRow = Record<string, unknown>> = Omit<
+  ButtonProps,
+  "onClick" | "className" | "disabled" | "children"
+> & {
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
+  className?: ColumnProp<TRow, string>;
+  disabled?: ColumnProp<TRow, boolean>;
+  children?: ColumnProp<TRow, ReactNode>;
 };
 
-function DatabaseAction({ className, ...props }: ActionProps) {
+function DatabaseAction({ className: _className, disabled: _disabled, children: _children, ...props }: ActionProps) {
   const { variant } = useTableRowContext();
   const row = useRow();
   const insideDropdown = useContext(InsideDropdownContext);
+  const className = getColumnProp(_className, row, variant);
+  const disabled = getColumnProp(_disabled, row, variant);
+  const children = getColumnProp(_children, row, variant);
 
   function handleClick(e: React.MouseEvent<unknown, MouseEvent>) {
     e.stopPropagation();
     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
   }
 
-  if (insideDropdown) return <DropdownMenuItem onClick={handleClick}>{props.children}</DropdownMenuItem>;
-  return <Button size="sm" {...props} className={cn("h-6 px-2", className)} onClick={handleClick} />;
+  if (insideDropdown) return !disabled && <DropdownMenuItem onClick={handleClick}>{children}</DropdownMenuItem>;
+  return (
+    <Button size="sm" {...props} disabled={disabled} className={cn("h-6 px-2", className)} onClick={handleClick}>
+      {children}
+    </Button>
+  );
 }
-
-// function DatabaseDropdownItem({ className, children, ...props }: ActionProps) {
-//   const { variant } = useTableRowContext();
-//   const row = useRow();
-
-//   function handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-//     e.stopPropagation();
-//     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
-//   }
-
-//   return <DropdownMenuItem onClick={handleClick}>{children}</DropdownMenuItem>;
-// }
 
 function Loading({ children, height, className }: { children?: ReactNode; height?: string; className?: string }) {
   const { isLoading } = useDataTable();

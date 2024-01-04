@@ -89,7 +89,7 @@ export default function Example() {
           <DataTable.Search />
           <DataTable.Config />
         </DataTable.Header>
-        <DataTable.Table condensed={condensed}>
+        <DataTable.Table condensed="sm">
           <DataTable.Rows
             onClick={({ row }) => alert(`row ${row.abbreviation}`)}
             variant={(row) => ({

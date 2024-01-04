@@ -7,7 +7,7 @@ import { memo } from "react";
 import { createContext, useContext } from "react";
 
 type TableContextType = {
-  condensed?: boolean;
+  condensed?: VariantProps<typeof cellVariants>["condensed"];
   rounded?: "all" | "perimeter" | "none";
 };
 const TableContext = createContext<TableContextType | null>(null);
@@ -267,6 +267,10 @@ const cellVariants = cva(
       },
 
       condensed: {
+        sm: "py-[3px] sm:py-[1px]",
+        md: "py-[3px] md:py-[1px]",
+        lg: "py-[3px] lg:py-[1px]",
+        xl: "py-[3px] xl:py-[1px]",
         true: "py-[1px]",
         false: "py-[3px]",
       },
