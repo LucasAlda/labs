@@ -21,11 +21,6 @@ const DATA = [
       },
     ],
   },
-  {
-    category: "footer",
-    type: "Totales",
-    amountArs: 9118459.54,
-  },
 ];
 
 type Row = (typeof disp)[number] & { category?: string };
@@ -60,7 +55,7 @@ export default function Example() {
   });
 
   const [table, DataTable] = useTable({
-    data: data as Array<Row>,
+    data: data as unknown as Array<Row>,
     minDepth: 1,
     pagination: 20,
     view,
@@ -108,7 +103,7 @@ export default function Example() {
             <DataTable.Column accessor="price" label="Precio" isNumber />
             <DataTable.Column accessor="date" label="Fecha" isDate />
             <DataTable.Column accessor="amount" label="Monto" isNumber />
-            <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
+            <DataTable.Column accessor="amountArs" footer={table.sum("amountArs")} label="Monto Pesos" isNumber />
             <DataTable.Buttons
               showEmpty={({ variant }) => variant !== "none"}
               accessorAlias="actionsCol"

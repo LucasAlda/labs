@@ -225,7 +225,6 @@ export function useView<T extends string | symbol | number = string>(
 
   const reset = useCallback(
     (onSize = size) => {
-      console.log(onSize, size);
       changeVisibility(() => defaultVisibility?.[onSize ?? size] as VisibilityState, onSize ?? size);
       changeOrder(() => [], onSize ?? size);
     },
@@ -282,6 +281,8 @@ export type UseTable<TRow = Record<string, unknown>> = {
   isEmpty: boolean;
   isLoading: boolean;
   paginationDefault?: number;
+  reduce: <T>(column: (acc: T, row: TRow) => unknown, initial: T, options?: { onlyVisible?: boolean }) => T;
+  sum: (column: keyof TRow | ((row: TRow) => unknown), options?: { onlyVisible?: boolean }) => number;
 };
 
 function genericSearch(row: Row<Record<string, unknown>>, globalFilter: string) {
@@ -411,6 +412,32 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     return table.getRowModel().rows;
   }, [table]);
 
+  const reduce = useCallback(
+    <T>(column: (acc: T, row: TRow) => unknown, initial: T, options?: { onlyVisible?: boolean }) => {
+      const { onlyVisible = false } = options ?? {};
+
+      const rows = onlyVisible ? table.getRowModel().rows : table.getCoreRowModel().rows;
+
+      return rows.reduce((acc, row) => column(acc, row.original as never) as never, initial);
+    },
+    [table]
+  );
+
+  const sum = useCallback(
+    (column: keyof TRow | ((row: TRow) => unknown), options?: { onlyVisible?: boolean }) => {
+      return reduce(
+        (acc, row) => {
+          const value = typeof column === "function" ? column(row) : row[column];
+          if (typeof value === "number") return acc + value;
+          return acc;
+        },
+        0,
+        options
+      );
+    },
+    [reduce]
+  );
+
   type DateTable = Omit<typeof DataTable, "Root" | "Column" | "Rows" | "Buttons" | "Dropdown" | "Action"> & {
     Root: (props: DataTableRootProps<TRow>) => JSX.Element;
     Rows: (props: RowsProps<TRow>) => JSX.Element;
@@ -434,8 +461,10 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
         globalFilter: search,
         setGlobalFilter: setSearch,
         paginationDefault: pagination,
+        reduce: reduce as UseTable<Record<string, unknown>>["reduce"],
+        sum: sum as UseTable<Record<string, unknown>>["sum"],
       } satisfies UseTable),
-    [columns, data, defaultView, getRows, search, pagination, prerender, table, view]
+    [table, columns, getRows, view, defaultView, prerender, data, search, pagination, reduce, sum]
   ) as UseTable<TRow>;
 
   return [returnValue, DataTable as DateTable] as const;

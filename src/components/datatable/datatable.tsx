@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { type Row } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
 import { ChevronDown, ChevronRight, MoreHorizontal, Settings2 } from "lucide-react";
-import { type ReactNode, startTransition, createContext, useContext } from "react";
+import { type ReactNode, startTransition, createContext, useContext, useMemo } from "react";
 import {
   DataTableContext,
   useDataTable,
@@ -87,6 +87,7 @@ export type ColumnPropsGeneric<TRow = Record<string, unknown>> = {
   children?: ColumnProp<TRow, ReactNode>;
   collapsible?: ColumnProp<TRow, boolean>;
   showEmpty?: ColumnProp<TRow, boolean>;
+  footer?: ReactNode;
 } & ({ accessor: keyof TRow } | { accessorAlias: string });
 
 export type ColumnProps<TRow = Record<string, unknown>> = ColumnPropsGeneric<TRow> & {
@@ -132,6 +133,7 @@ export type RowsProps<TRow = Record<string, unknown>> = {
   variant?: (row: TRow) => {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
   };
+  footerVariant?: NonNullable<VariantProps<typeof rowVariants>["variant"]>;
 };
 
 function getColumnProp<T extends ColumnProp<Record<string, unknown>, unknown>>(
@@ -184,10 +186,19 @@ const RowContext = createContext<Row<Record<string, unknown>>>(null as never);
 export const useRow = <T extends Record<string, unknown> = Record<string, unknown>>() =>
   useContext(RowContext) as Row<T>;
 
-function Rows({ children, onClick, variant, className }: RowsProps) {
+function Rows({ children, onClick, variant, className, footerVariant = "dark" }: RowsProps) {
   const table = useDataTable();
   const columnsProps = useColumnsFromChildren(children);
   const [columns, title] = useColumns(columnsProps);
+
+  const footerColumns = getRowColumns(
+    columns,
+    {
+      original: columns.reduce((acc, col) => ({ ...acc, [col.accessor]: col.props.footer })),
+    } as unknown as Row<Record<string, unknown>>,
+    footerVariant,
+    title
+  );
 
   if (!table.prerender && table.columns.length === 0) return null;
   if (table.isLoading || table.isEmpty) return null;
@@ -253,6 +264,37 @@ function Rows({ children, onClick, variant, className }: RowsProps) {
           );
         })}
       </tbody>
+      {columns.some((col) => col.props.footer) && (
+        <tfoot>
+          <Table.Row variant={footerVariant}>
+            {footerColumns.map(
+              ({
+                props: {
+                  title,
+                  showEmpty,
+                  collapsible: collapsable,
+                  className,
+                  thClassName,
+                  columnType,
+                  footer,
+                  ...props
+                },
+                accessor,
+                col,
+              }) => {
+                if (table.columns.length > 0 && !col) return null;
+                if (title && !footer) footer = "Totales";
+
+                return (
+                  <Table.Cell key={accessor} {...props}>
+                    {footer}
+                  </Table.Cell>
+                );
+              }
+            )}
+          </Table.Row>
+        </tfoot>
+      )}
     </>
   );
 }
@@ -460,6 +502,5 @@ export const DataTable = {
   Buttons: ButtonsDummy,
   Action: DatabaseAction,
   Dropdown: DropdownDummy,
-  // DropdownItem: DatabaseDropdownItem,
   Pagination: DataTablePagination,
 };
