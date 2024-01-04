@@ -194,7 +194,7 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
   const footerColumns = getRowColumns(
     columns,
     {
-      original: columns.reduce((acc, col) => ({ ...acc, [col.accessor]: col.props.footer })),
+      original: columns.reduce((acc, col) => ({ ...acc, [col.accessor]: col.props.footer }), {}),
     } as unknown as Row<Record<string, unknown>>,
     footerVariant,
     title
