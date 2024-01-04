@@ -264,7 +264,7 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
           );
         })}
       </tbody>
-      {columns.some((col) => col.props.footer) && (
+      {columns.some((col) => typeof col.props.footer !== "undefined") && (
         <tfoot>
           <Table.Row variant={footerVariant}>
             {footerColumns.map(
