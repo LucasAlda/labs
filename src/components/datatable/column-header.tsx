@@ -30,7 +30,7 @@ export function DataTableColumnHeader<TData, TValue>({
             variant="ghost"
             size="sm"
             style={{ textAlign: "inherit" }}
-            className="-mx-2 -my-1 block h-8 w-[calc(100%+1rem)] px-2  focus-visible:ring-0 data-[state=open]:bg-slate-200 sm:h-7"
+            className="-mx-2 -my-1 block h-8 w-[calc(100%+1rem)] bg-slate-50 px-2 focus-visible:ring-0 data-[state=open]:bg-slate-200 sm:h-7"
           >
             <span className="relative">
               {title}

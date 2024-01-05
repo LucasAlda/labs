@@ -34,6 +34,34 @@ import {
 } from "@/components/datatable/hooks";
 import { DataTablePagination } from "@/components/datatable/pagination";
 
+import resolveConfig from "tailwindcss/resolveConfig";
+import tailwindConfig from "../../../tailwind.config.js";
+
+const { theme } = resolveConfig(tailwindConfig);
+
+let string = "<style>";
+
+function addColor(color: string, value: string) {
+  string += `
+  .bg-${color} {
+    background-color: ${value};
+  }
+
+  .text-${color} {
+    color: ${value};
+  }
+`;
+}
+Object.entries(theme?.colors as Record<string, string | Record<string, string>>).forEach(([key, value]) => {
+  if (typeof value === "string") addColor(key, value);
+  else {
+    Object.entries(value).forEach(([subKey, value]) => {
+      addColor(`${key}-${subKey}`, value);
+    });
+  }
+});
+string += "</style>";
+
 export type DataTableRootProps<TRow = Record<string, unknown>> = TableCardProps & {
   children: ReactNode;
   table: UseTable<TRow>;
@@ -66,6 +94,40 @@ function Search({ className }: { className?: string }) {
       placeholder={`Buscar...`}
       className={cn("h-8 w-full max-w-[14rem]", className)}
     />
+  );
+}
+
+function Copy({ className }: { className?: string }) {
+  const { tableRef } = useDataTable();
+
+  function handleClick() {
+    if (!tableRef?.current) return;
+    const selection = document.createRange();
+    const clone = tableRef.current.cloneNode(true) as unknown as { style: Record<string, string> };
+    clone.style.width = "1350px";
+    clone.style.marginTop = "1000px";
+    clone.style.padding = "0.1px 10px 20px 10px";
+    clone.style.left = "15px";
+
+    const styles = document.createElement("style");
+    styles.innerHTML = string;
+
+    console.log(styles);
+    document.body.appendChild(styles);
+    document.body.appendChild(clone as unknown as Node);
+    selection.selectNodeContents(clone as unknown as Node);
+    if (typeof window !== "undefined") window.getSelection()?.removeAllRanges();
+    if (typeof window !== "undefined") window.getSelection()?.addRange(selection);
+    document.execCommand("copy");
+    document.body.removeChild(styles);
+    document.body.removeChild(clone as unknown as Node);
+    if (typeof window !== "undefined") window?.getSelection()?.removeRange(selection);
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleClick} className={cn("print:hidden", className)}>
+      Copiar
+    </Button>
   );
 }
 
@@ -169,6 +231,7 @@ function getRowColumns(
   if (firstValue === 0) return columns;
 
   const variantColumns: typeof columns = [...columns];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const firstCol = variantColumns[0]!;
 
   if (titleIndex > 0) variantColumns[titleIndex] = firstCol;
@@ -265,7 +328,7 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
         })}
       </tbody>
       {columns.some((col) => typeof col.props.footer !== "undefined") && (
-        <tfoot>
+        <tbody>
           <Table.Row variant={footerVariant}>
             {footerColumns.map(
               ({
@@ -293,7 +356,7 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
               }
             )}
           </Table.Row>
-        </tfoot>
+        </tbody>
       )}
     </>
   );
@@ -487,13 +550,18 @@ function Empty({ children, height, className }: { children?: ReactNode; height?:
   );
 }
 
+function DataTableTable(props: TableProps) {
+  const { tableRef } = useDataTable();
+  return <Table tableRef={tableRef} {...props} />;
+}
+
 export const DataTable = {
   Root: DataTableRoot,
   Header: TableContainer.Header,
   Title: Title,
   Search: Search,
   Config: ViewOptions,
-  Table,
+  Table: DataTableTable,
   Rows: Rows,
   Column: ColumnDummy,
   Loading,
@@ -502,4 +570,5 @@ export const DataTable = {
   Action: DatabaseAction,
   Dropdown: DropdownDummy,
   Pagination: DataTablePagination,
+  Copy,
 };

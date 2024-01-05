@@ -26,6 +26,7 @@ import {
 } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { type ValueOf } from "next/dist/shared/lib/constants";
+import type { RefObject } from "react";
 import {
   type Dispatch,
   type SetStateAction,
@@ -37,7 +38,29 @@ import {
   createContext,
   type ReactNode,
   Children,
+  useRef,
 } from "react";
+
+export type UseTable<TRow = Record<string, unknown>> = {
+  tableRef: RefObject<HTMLTableElement>;
+  table: Table<TRow>;
+  setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
+  columns: ColumnProps[];
+  globalFilter: string;
+  getRows: () => Row<TRow>[];
+  setGlobalFilter: Dispatch<SetStateAction<string>>;
+  view: ReturnType<typeof useView>;
+  prerender?: boolean;
+  isEmpty: boolean;
+  isLoading: boolean;
+  paginationDefault?: number;
+  reduce: <T>(column: (acc: T, row: TRow) => unknown, initial: T, options?: { onlyVisible?: boolean }) => T;
+  sum: (column: keyof TRow | ((row: TRow) => unknown), options?: { onlyVisible?: boolean }) => number;
+};
+
+export const DataTableContext = createContext<UseTable>(null as unknown as UseTable);
+
+export const useDataTable = () => useContext(DataTableContext);
 
 export function getAccessor(column: ColumnPropsGeneric) {
   return "accessor" in column ? column.accessor : column.accessorAlias;
@@ -151,7 +174,8 @@ type Orders = {
 
 export function useView<T extends string | symbol | number = string>(
   key: string | undefined,
-  defaultVisibility?: Visibilitys<T>
+  defaultVisibility?: Visibilitys<T>,
+  viewSizes = true
 ) {
   const [size, setSize] = useState<ViewSizes>("lg");
   const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key ?? ""}_order`, {});
@@ -162,6 +186,7 @@ export function useView<T extends string | symbol | number = string>(
 
   useEffect(() => {
     function onResize() {
+      if (!viewSizes) return;
       if (window.innerWidth < 640) {
         setSize("sm");
       } else if (window.innerWidth < 1024) {
@@ -174,7 +199,7 @@ export function useView<T extends string | symbol | number = string>(
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [viewSizes]);
 
   const visibility = visibilitys[size] as VisibilityState;
   const order = orders[size];
@@ -238,6 +263,7 @@ export function useView<T extends string | symbol | number = string>(
       getIsVisible,
       visibility,
       size,
+      viewSizes,
       changeOrder,
       changeVisibility,
       reset,
@@ -256,6 +282,7 @@ export function useView<T extends string | symbol | number = string>(
       reset,
       save,
       size,
+      viewSizes,
       toggleVisibility,
       visibility,
       visibilityChanged,
@@ -268,22 +295,6 @@ type GetRow<T> = T extends Array<infer K extends Record<string, unknown>>
     ? { "Provide a type on useTable": true }
     : K
   : never;
-
-export type UseTable<TRow = Record<string, unknown>> = {
-  table: Table<TRow>;
-  setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
-  columns: ColumnProps[];
-  globalFilter: string;
-  getRows: () => Row<TRow>[];
-  setGlobalFilter: Dispatch<SetStateAction<string>>;
-  view: ReturnType<typeof useView>;
-  prerender?: boolean;
-  isEmpty: boolean;
-  isLoading: boolean;
-  paginationDefault?: number;
-  reduce: <T>(column: (acc: T, row: TRow) => unknown, initial: T, options?: { onlyVisible?: boolean }) => T;
-  sum: (column: keyof TRow | ((row: TRow) => unknown), options?: { onlyVisible?: boolean }) => number;
-};
 
 function genericSearch(row: Row<Record<string, unknown>>, globalFilter: string) {
   const res = row.getVisibleCells().some((cell) => {
@@ -330,6 +341,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   sort?: Record<string, (a: TRow, b: TRow) => number>;
   view?: ReturnType<typeof useView>;
 }) {
+  const tableRef = useRef<HTMLTableElement>(null);
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [paginationState, setPaginationState] = useState<PaginationState>(() => ({
@@ -450,6 +462,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   const returnValue = useMemo(
     () =>
       ({
+        tableRef,
         table,
         setColumns,
         columns,
@@ -469,7 +482,3 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
 
   return [returnValue, DataTable as DateTable] as const;
 }
-
-export const DataTableContext = createContext<UseTable>(null as unknown as UseTable);
-
-export const useDataTable = () => useContext(DataTableContext);

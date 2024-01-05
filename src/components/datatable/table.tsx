@@ -14,13 +14,14 @@ const TableContext = createContext<TableContextType | null>(null);
 export const useTableContext = () => useContext(TableContext)!;
 
 export type TableProps = {
+  tableRef?: React.Ref<HTMLTableElement>;
   tableProps?: HTMLProps<HTMLTableElement>;
   children?: ReactNode;
   className?: string;
   fixed?: boolean;
 } & TableContextType;
 
-export function Table({ children, className, rounded, condensed, tableProps, fixed = false }: TableProps) {
+export function Table({ children, className, rounded, condensed, tableProps, fixed = false, tableRef }: TableProps) {
   const ctx = useTableContext();
   return (
     <>
@@ -40,6 +41,7 @@ export function Table({ children, className, rounded, condensed, tableProps, fix
           })}
         >
           <table
+            ref={tableRef}
             className={cn(
               "group/table table w-full border-separate border-spacing-0 bg-white",
               fixed && "table-fixed",
