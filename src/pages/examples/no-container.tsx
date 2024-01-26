@@ -27,15 +27,15 @@ export default function Example() {
       <DataTable.Root table={table} variant="island">
         <DataTable.Table>
           <DataTable.Rows>
-            <DataTable.Column accessor="type" label="Tipo" align="center" />
-            <DataTable.Column accessor="title" label="Concepto" align="center" />
-            <DataTable.Column accessor="code" label="Codigo" align="right" />
-            <DataTable.Column accessor="abbreviation" label="Abreviatura" align="center" />
-            <DataTable.Column accessor="quantity" label="Cantidad" align="right" />
-            <DataTable.Column accessor="price" label="Precio" isNumber />
-            <DataTable.Column accessor="date" label="Fecha" isDate />
-            <DataTable.Column accessor="amount" label="Monto" isNumber />
-            <DataTable.Column accessor="amountArs" label="Monto Pesos" isNumber />
+            <DataTable.Cell accessor="type" label="Tipo" align="center" />
+            <DataTable.Cell accessor="title" label="Concepto" align="center" />
+            <DataTable.Cell accessor="code" label="Codigo" align="right" />
+            <DataTable.Cell accessor="abbreviation" label="Abreviatura" align="center" />
+            <DataTable.Cell accessor="quantity" label="Cantidad" align="right" />
+            <DataTable.Cell accessor="price" label="Precio" isNumber />
+            <DataTable.Cell accessor="date" label="Fecha" isDate />
+            <DataTable.Cell accessor="amount" label="Monto" isNumber />
+            <DataTable.Cell accessor="amountArs" label="Monto Pesos" isNumber />
           </DataTable.Rows>
         </DataTable.Table>
       </DataTable.Root>

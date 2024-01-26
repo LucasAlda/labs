@@ -18,6 +18,7 @@ import {
   TableContainer,
   type rowVariants,
   useTableRowContext,
+  type TableProps,
 } from "@/components/datatable/table";
 import { cn } from "@/lib/utils";
 import { type Row } from "@tanstack/react-table";
@@ -34,33 +35,33 @@ import {
 } from "@/components/datatable/hooks";
 import { DataTablePagination } from "@/components/datatable/pagination";
 
-import resolveConfig from "tailwindcss/resolveConfig";
-import tailwindConfig from "../../../tailwind.config.js";
+// import resolveConfig from "tailwindcss/resolveConfig";
+// import tailwindConfig from "../../../tailwind.config.js";
 
-const { theme } = resolveConfig(tailwindConfig);
+// const { theme } = resolveConfig(tailwindConfig);
 
-let string = "<style>";
+const string = "<style>";
 
-function addColor(color: string, value: string) {
-  string += `
-  .bg-${color} {
-    background-color: ${value};
-  }
+// function addColor(color: string, value: string) {
+//   string += `
+//   .bg-${color} {
+//     background-color: ${value};
+//   }
 
-  .text-${color} {
-    color: ${value};
-  }
-`;
-}
-Object.entries(theme?.colors as Record<string, string | Record<string, string>>).forEach(([key, value]) => {
-  if (typeof value === "string") addColor(key, value);
-  else {
-    Object.entries(value).forEach(([subKey, value]) => {
-      addColor(`${key}-${subKey}`, value);
-    });
-  }
-});
-string += "</style>";
+//   .text-${color} {
+//     color: ${value};
+//   }
+// `;
+// }
+// Object.entries(theme?.colors as Record<string, string | Record<string, string>>).forEach(([key, value]) => {
+//   if (typeof value === "string") addColor(key, value);
+//   else {
+//     Object.entries(value).forEach(([subKey, value]) => {
+//       addColor(`${key}-${subKey}`, value);
+//     });
+//   }
+// });
+// string += "</style>";
 
 export type DataTableRootProps<TRow = Record<string, unknown>> = TableCardProps & {
   children: ReactNode;
@@ -131,11 +132,11 @@ function Copy({ className }: { className?: string }) {
   );
 }
 
-type ColumnProp<TRow, TReturn> =
+type CellProp<TRow, TReturn> =
   | TReturn
   | ((props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => TReturn);
 
-export type ColumnPropsGeneric<TRow = Record<string, unknown>> = {
+export type CellPropsGeneric<TRow = Record<string, unknown>> = {
   isDate?: boolean;
   isNumber?: boolean;
   align?: "center" | "right" | "left";
@@ -145,14 +146,14 @@ export type ColumnPropsGeneric<TRow = Record<string, unknown>> = {
   colSpan?: number;
   title?: boolean;
   hideLabel?: boolean;
-  className?: ColumnProp<TRow, string>;
-  children?: ColumnProp<TRow, ReactNode>;
-  collapsible?: ColumnProp<TRow, boolean>;
-  showEmpty?: ColumnProp<TRow, boolean>;
+  className?: CellProp<TRow, string>;
+  children?: CellProp<TRow, ReactNode>;
+  collapsible?: CellProp<TRow, boolean>;
+  showEmpty?: CellProp<TRow, boolean>;
   footer?: ReactNode;
 } & ({ accessor: keyof TRow } | { accessorAlias: string });
 
-export type ColumnProps<TRow = Record<string, unknown>> = ColumnPropsGeneric<TRow> & {
+export type CellProps<TRow = Record<string, unknown>> = CellPropsGeneric<TRow> & {
   columnType: "column" | "buttons" | "dropdown";
 };
 
@@ -198,11 +199,11 @@ export type RowsProps<TRow = Record<string, unknown>> = {
   footerVariant?: NonNullable<VariantProps<typeof rowVariants>["variant"]>;
 };
 
-function getColumnProp<T extends ColumnProp<Record<string, unknown>, unknown>>(
+function getColumnProp<T extends CellProp<Record<string, unknown>, unknown>>(
   prop: T,
   row: Row<Record<string, unknown>>,
   variant?: VariantProps<typeof rowVariants>["variant"]
-): T extends ColumnProp<Record<string, unknown>, infer R> ? R : never {
+): T extends CellProp<Record<string, unknown>, infer R> ? R : never {
   if (typeof prop === "function") return prop({ row: row.original, controller: row, variant }) as never;
   return prop as never;
 }
@@ -248,6 +249,33 @@ function getRowColumns(
 const RowContext = createContext<Row<Record<string, unknown>>>(null as never);
 export const useRow = <T extends Record<string, unknown> = Record<string, unknown>>() =>
   useContext(RowContext) as Row<T>;
+
+export type RowProps<T = Record<string, unknown>> = {
+  ctx: Row<T>;
+  variant: VariantProps<typeof rowVariants>["variant"];
+  className?: string;
+  onClick: (e: React.MouseEvent<HTMLTableRowElement, MouseEvent>) => void;
+  children: ReactNode;
+};
+
+function Row({ ctx, variant, className, onClick, children }: RowProps) {
+  return (
+    <Table.Row
+      key={ctx.id}
+      variant={variant}
+      className={className}
+      onClick={(e) => {
+        if (!(e.target instanceof HTMLTableCellElement) && !(e.target instanceof HTMLTableRowElement)) {
+          e.stopPropagation();
+          return;
+        }
+        onClick?.(e);
+      }}
+    >
+      <RowContext.Provider value={ctx}>{children}</RowContext.Provider>
+    </Table.Row>
+  );
+}
 
 function Rows({ children, onClick, variant, className, footerVariant = "dark" }: RowsProps) {
   const table = useDataTable();
@@ -296,7 +324,7 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
         </tr>
       </Table.Head>
       <tbody>
-        {table.getRows().map((row) => {
+        {table.getRows().map(({ ctx: row }) => {
           const entries = Object.entries(variant?.(row.original) ?? {}) as Array<
             [NonNullable<VariantProps<typeof rowVariants>["variant"]>, boolean]
           >;
@@ -320,7 +348,7 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
                 {rowColumns.map(({ props, accessor }) => {
                   if (props.columnType === "buttons") return <Buttons key={accessor} {...props} />;
                   if (props.columnType === "dropdown") return <DatabaseDropdown key={accessor} {...props} />;
-                  return <Column key={accessor} {...props} />;
+                  return <Cell key={accessor} {...props} />;
                 })}
               </RowContext.Provider>
             </Table.Row>
@@ -362,32 +390,17 @@ function Rows({ children, onClick, variant, className, footerVariant = "dark" }:
   );
 }
 
-function ColumnDummy(props: ColumnPropsGeneric) {
-  props;
-  return null;
-}
-
-function ButtonsDummy(props: ColumnPropsGeneric & { responsive?: boolean }) {
-  props;
-  return null;
-}
-
-function DropdownDummy(props: ColumnPropsGeneric) {
-  props;
-  return null;
-}
-
-function Column({
+function Cell({
   collapsible: collapsable,
   title,
   className: _className,
   showEmpty: _showEmpty,
   sortable,
-  columnType,
+
   children: childrenRaw,
   thClassName,
   ...props
-}: ColumnProps) {
+}: CellProps) {
   const row = useRow();
   const { variant } = useTableRowContext();
   const accessor = getAccessor(props);
@@ -427,18 +440,13 @@ function Column({
 
 const InsideDropdownContext = createContext(false);
 
-function Buttons({
-  label,
-  responsive = true,
-  children: childrenRaw,
-  ...props
-}: ColumnProps & { responsive?: boolean }) {
+function Buttons({ label, responsive = true, children: childrenRaw, ...props }: CellProps & { responsive?: boolean }) {
   const row = useRow();
   const { variant } = useTableRowContext();
   const children = getColumnProp(childrenRaw, row, variant);
 
   return (
-    <Column {...props}>
+    <Cell {...props}>
       <div className={cn("flex gap-1", responsive && "hidden md:flex")}>{children}</div>
       {responsive && (
         <div className={"sm:h-5 md:hidden"}>
@@ -457,17 +465,17 @@ function Buttons({
           </InsideDropdownContext.Provider>
         </div>
       )}
-    </Column>
+    </Cell>
   );
 }
 
-function DatabaseDropdown({ label, children: childrenRaw, ...props }: ColumnProps) {
+function DatabaseDropdown({ label, children: childrenRaw, ...props }: CellProps) {
   const row = useRow();
   const { variant } = useTableRowContext();
   const children = getColumnProp(childrenRaw, row, variant);
 
   return (
-    <Column {...props}>
+    <Cell {...props}>
       <div className="sm:h-5">
         <InsideDropdownContext.Provider value={true}>
           <DropdownMenu>
@@ -483,7 +491,7 @@ function DatabaseDropdown({ label, children: childrenRaw, ...props }: ColumnProp
           </DropdownMenu>
         </InsideDropdownContext.Provider>
       </div>
-    </Column>
+    </Cell>
   );
 }
 
@@ -492,9 +500,9 @@ export type ActionProps<TRow = Record<string, unknown>> = Omit<
   "onClick" | "className" | "disabled" | "children"
 > & {
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
-  className?: ColumnProp<TRow, string>;
-  disabled?: ColumnProp<TRow, boolean>;
-  children?: ColumnProp<TRow, ReactNode>;
+  className?: CellProp<TRow, string>;
+  disabled?: CellProp<TRow, boolean>;
+  children?: CellProp<TRow, ReactNode>;
 };
 
 function DatabaseAction({ className: _className, disabled: _disabled, children: _children, ...props }: ActionProps) {
@@ -562,13 +570,14 @@ export const DataTable = {
   Search: Search,
   Config: ViewOptions,
   Table: DataTableTable,
+  Row: Row,
   Rows: Rows,
-  Column: ColumnDummy,
+  Cell: Cell,
   Loading,
   Empty,
-  Buttons: ButtonsDummy,
+  Buttons: Buttons,
   Action: DatabaseAction,
-  Dropdown: DropdownDummy,
+  Dropdown: DatabaseDropdown,
   Pagination: DataTablePagination,
   Copy,
 };

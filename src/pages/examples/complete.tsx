@@ -85,49 +85,59 @@ export default function Example() {
           <DataTable.Config />
         </DataTable.Header>
         <DataTable.Table condensed="sm">
-          <DataTable.Rows
-            onClick={({ row }) => alert(`row ${row.abbreviation}`)}
-            variant={(row) => ({
-              main: row?.category === "header",
-              gray: row?.category === "subheader",
-              dark: row?.category === "footer",
-            })}
-          >
-            <DataTable.Column title collapsible accessor="type" label="Tipo" align="center" />
-            <DataTable.Column accessor="title" label="Concepto" align="center" />
-            <DataTable.Column accessor="code" label="Codigo" align="right">
-              {({ row }) => <div>{row.code}</div>}
-            </DataTable.Column>
-            <DataTable.Column accessor="abbreviation" label="Abreviatura" align="center" />
-            <DataTable.Column accessor="quantity" label="Cantidad" align="right" />
-            <DataTable.Column accessor="price" label="Precio" isNumber />
-            <DataTable.Column accessor="date" label="Fecha" isDate />
-            <DataTable.Column accessor="amount" label="Monto" isNumber />
-            <DataTable.Column accessor="amountArs" footer={table.sum("amountArs")} label="Monto Pesos" isNumber />
-            <DataTable.Buttons
-              showEmpty={({ variant }) => variant !== "none"}
-              accessorAlias="actionsCol"
-              label="Acciones"
-            >
-              <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
-              <DataTable.Action onClick={({ row }) => alert(`${row.price} 1`)}>Price</DataTable.Action>
-            </DataTable.Buttons>
-            <DataTable.Dropdown
-              showEmpty={({ variant }) => variant !== "none"}
-              accessorAlias="actionCol2"
-              label="Acciones2"
-            >
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
-                    Abbreviation
-                  </DataTable.Action>
+          <tbody>
+            {table.getRows().map(({ ctx, row }) => (
+              <DataTable.Row
+                ctx={ctx}
+                key={ctx.id}
+                onClick={() => alert(`row ${row.abbreviation}`)}
+                variant={
+                  row?.category === "header"
+                    ? "main"
+                    : row?.category === "subheader"
+                    ? "gray"
+                    : row?.category === "footer"
+                    ? "dark"
+                    : "none"
+                }
+              >
+                <DataTable.Cell title collapsible accessor="type" label="Tipo" align="center" />
+                <DataTable.Cell accessor="title" label="Concepto" align="center" />
+                <DataTable.Cell accessor="code" label="Codigo" align="right">
+                  {({ row }) => <div>{row.code}</div>}
+                </DataTable.Cell>
+                <DataTable.Cell accessor="abbreviation" label="Abreviatura" align="center" />
+                <DataTable.Cell accessor="quantity" label="Cantidad" align="right" />
+                <DataTable.Cell accessor="price" label="Precio" isNumber />
+                <DataTable.Cell accessor="date" label="Fecha" isDate />
+                <DataTable.Cell accessor="amount" label="Monto" isNumber />
+                <DataTable.Cell accessor="amountArs" footer={table.sum("amountArs")} label="Monto Pesos" isNumber />
+                <DataTable.Buttons
+                  showEmpty={({ variant }) => variant !== "none"}
+                  accessorAlias="actionsCol"
+                  label="Acciones"
+                >
                   <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            </DataTable.Dropdown>
-          </DataTable.Rows>
+                  <DataTable.Action onClick={({ row }) => alert(`${row.price} 1`)}>Price</DataTable.Action>
+                </DataTable.Buttons>
+                <DataTable.Dropdown
+                  showEmpty={({ variant }) => variant !== "none"}
+                  accessorAlias="actionCol2"
+                  label="Acciones2"
+                >
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
+                        Abbreviation
+                      </DataTable.Action>
+                      <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </DataTable.Dropdown>
+              </DataTable.Row>
+            ))}
+          </tbody>
         </DataTable.Table>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
         <DataTable.Empty height="h-80">

@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import {
   DataTable,
-  type ColumnProps,
+  type CellProps,
   type RowsProps,
   type ActionProps,
   type DataTableRootProps,
-  type ColumnPropsGeneric,
+  type CellPropsGeneric,
+  type RowProps,
 } from "@/components/datatable/datatable";
 import { formatNumber } from "@/lib/utils";
 import {
@@ -44,10 +45,10 @@ import {
 export type UseTable<TRow = Record<string, unknown>> = {
   tableRef: RefObject<HTMLTableElement>;
   table: Table<TRow>;
-  setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
-  columns: ColumnProps[];
+  setColumns: Dispatch<SetStateAction<CellProps[]>>;
+  columns: CellProps[];
   globalFilter: string;
-  getRows: () => Row<TRow>[];
+  getRows: () => { row: TRow; ctx: Row<TRow> }[];
   setGlobalFilter: Dispatch<SetStateAction<string>>;
   view: ReturnType<typeof useView>;
   prerender?: boolean;
@@ -62,7 +63,7 @@ export const DataTableContext = createContext<UseTable>(null as unknown as UseTa
 
 export const useDataTable = () => useContext(DataTableContext);
 
-export function getAccessor(column: ColumnPropsGeneric) {
+export function getAccessor(column: CellPropsGeneric) {
   return "accessor" in column ? column.accessor : column.accessorAlias;
 }
 
@@ -108,13 +109,13 @@ type ColumnType = ValueOf<typeof columnTypes>;
 export function useColumnsFromChildren(children: ReactNode) {
   const table = useDataTable();
 
-  const columns = Children.map(children as never, (child: { props: ColumnPropsGeneric; type?: { name: string } }) => {
+  const columns = Children.map(children as never, (child: { props: CellPropsGeneric; type?: { name: string } }) => {
     if (!child) return null;
     const name = child.type?.name ?? "NO EXISTS";
     return {
       columnType: ((name in columnTypes ? columnTypes[name as never] : undefined) ?? "NOT EXISTS") as ColumnType,
       ...child.props,
-    } satisfies ColumnProps;
+    } satisfies CellProps;
   }).filter((col) => {
     if (!col) return false;
     if (col.columnType === ("NOT EXISTS" as ColumnType))
@@ -131,7 +132,7 @@ export function useColumnsFromChildren(children: ReactNode) {
   return columns;
 }
 
-export function useColumns(columns: ColumnProps[]) {
+export function useColumns(columns: CellProps[]) {
   const table = useDataTable();
   const tanstackColumns = table.table.getVisibleFlatColumns();
 
@@ -342,7 +343,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   view?: ReturnType<typeof useView>;
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
-  const [columns, setColumns] = useState<Array<ColumnProps>>([]);
+  const [columns, setColumns] = useState<Array<CellProps>>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [paginationState, setPaginationState] = useState<PaginationState>(() => ({
     pageSize: pagination ?? 10000,
@@ -421,7 +422,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   });
 
   const getRows = useCallback(() => {
-    return table.getRowModel().rows;
+    return table.getRowModel().rows.map((a) => ({ ctx: a, row: a.original }));
   }, [table]);
 
   const reduce = useCallback(
@@ -450,12 +451,13 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     [reduce]
   );
 
-  type DateTable = Omit<typeof DataTable, "Root" | "Column" | "Rows" | "Buttons" | "Dropdown" | "Action"> & {
+  type DateTable = Omit<typeof DataTable, "Root" | "Cell" | "Row" | "Rows" | "Buttons" | "Dropdown" | "Action"> & {
     Root: (props: DataTableRootProps<TRow>) => JSX.Element;
+    Row: (props: RowProps<TRow>) => JSX.Element;
     Rows: (props: RowsProps<TRow>) => JSX.Element;
-    Column: (props: ColumnPropsGeneric<TRow>) => null;
-    Buttons: (props: ColumnPropsGeneric<TRow> & { responsive?: boolean }) => null;
-    Dropdown: (props: ColumnPropsGeneric<TRow>) => null;
+    Cell: (props: CellPropsGeneric<TRow>) => null;
+    Buttons: (props: CellPropsGeneric<TRow> & { responsive?: boolean }) => null;
+    Dropdown: (props: CellPropsGeneric<TRow>) => null;
     Action: (props: ActionProps<TRow>) => JSX.Element;
   };
 
@@ -480,5 +482,5 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     [table, columns, getRows, view, defaultView, prerender, data, search, pagination, reduce, sum]
   ) as UseTable<TRow>;
 
-  return [returnValue, DataTable as DateTable] as const;
+  return [returnValue, DataTable as unknown as DateTable] as const;
 }
