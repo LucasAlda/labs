@@ -64,6 +64,7 @@ const MainMenu = ({ setShow }: { setShow: (show: boolean) => void }) => {
         <Menu.Option path="/view">View</Menu.Option>
         <Menu.Option path="/action">Actions</Menu.Option>
         <Menu.Option path="/complete">Complete</Menu.Option>
+        <Menu.Option path="/ssr">SRR</Menu.Option>
       </Menu.Dropdown>
     </Menu>
   );
