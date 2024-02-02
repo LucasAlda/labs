@@ -59,6 +59,11 @@ export default function Example() {
     minDepth: 1,
     pagination: 20,
     view,
+    variant: (row) => ({
+      main: row.category === "header",
+      gray: row.category === "subheader",
+      dark: row.category === "footer",
+    }),
     filter: (row, search, filter) => {
       if (search === "secret") return row.original.type === "CEDEARS";
       return filter(row);
@@ -85,59 +90,47 @@ export default function Example() {
           <DataTable.Config />
         </DataTable.Header>
         <DataTable.Table condensed="sm">
-          <tbody>
-            {table.getRows().map(({ ctx, row }) => (
-              <DataTable.Row
-                ctx={ctx}
-                key={ctx.id}
-                onClick={() => alert(`row ${row.abbreviation}`)}
-                variant={
-                  row?.category === "header"
-                    ? "main"
-                    : row?.category === "subheader"
-                    ? "gray"
-                    : row?.category === "footer"
-                    ? "dark"
-                    : "none"
-                }
-              >
-                <DataTable.Cell title collapsible accessor="type" label="Tipo" align="center" />
-                <DataTable.Cell accessor="title" label="Concepto" align="center" />
-                <DataTable.Cell accessor="code" label="Codigo" align="right">
-                  {({ row }) => <div>{row.code}</div>}
-                </DataTable.Cell>
-                <DataTable.Cell accessor="abbreviation" label="Abreviatura" align="center" />
-                <DataTable.Cell accessor="quantity" label="Cantidad" align="right" />
-                <DataTable.Cell accessor="price" label="Precio" isNumber />
-                <DataTable.Cell accessor="date" label="Fecha" isDate />
-                <DataTable.Cell accessor="amount" label="Monto" isNumber />
-                <DataTable.Cell accessor="amountArs" footer={table.sum("amountArs")} label="Monto Pesos" isNumber />
-                <DataTable.Buttons
-                  showEmpty={({ variant }) => variant !== "none"}
-                  accessorAlias="actionsCol"
-                  label="Acciones"
-                >
-                  <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
-                  <DataTable.Action onClick={({ row }) => alert(`${row.price} 1`)}>Price</DataTable.Action>
-                </DataTable.Buttons>
-                <DataTable.Dropdown
-                  showEmpty={({ variant }) => variant !== "none"}
-                  accessorAlias="actionCol2"
-                  label="Acciones2"
-                >
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DataTable.Action onClick={({ row }) => alert(`${row.abbreviation} 1`)}>
-                        Abbreviation
-                      </DataTable.Action>
-                      <DataTable.Action onClick={({ row }) => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                </DataTable.Dropdown>
-              </DataTable.Row>
-            ))}
-          </tbody>
+          <DataTable.Cols>
+            <DataTable.Col label="Tipo" accessor="type" align="center" />
+            <DataTable.Col label="Descripcion" accessor="title" align="center" />
+            <DataTable.Col label="Codigo" accessor="code" align="right" />
+            <DataTable.Col label="Abreviatura" accessor="abbreviation" align="center" />
+            <DataTable.Col label="Cantidad" accessor="quantity" align="right" />
+            <DataTable.Col label="Precio" accessor="price" isNumber />
+            <DataTable.Col label="Fecha" accessor="date" isDate />
+            <DataTable.Col label="Monto" accessor="amount" isNumber />
+            <DataTable.Col label="Monto Pesos" accessor="amountArs" isNumber />
+            <DataTable.Col label="Acciones" accessorAlias="actionsCol" />
+            <DataTable.Col label="Acciones 2" type="dropdown" accessorAlias="actionCol2" />
+          </DataTable.Cols>
+          {table.getRows().map(({ ctx, row, variant }) => (
+            <DataTable.Row ctx={ctx} key={ctx.id} onClick={() => alert(`row ${row.abbreviation}`)} variant={variant}>
+              <DataTable.Cell title collapsible accessor="type" align="center" />
+              <DataTable.Cell accessor="title" align="center" />
+              <DataTable.Cell accessor="code" align="right">
+                <div>{row.code}</div>
+              </DataTable.Cell>
+              <DataTable.Cell accessor="abbreviation" align="center" />
+              <DataTable.Cell accessor="quantity" align="right" />
+              <DataTable.Cell accessor="price" isNumber />
+              <DataTable.Cell accessor="date" isDate />
+              <DataTable.Cell accessor="amount" isNumber />
+              <DataTable.Cell accessor="amountArs" footer={table.sum("amountArs")} isNumber />
+              <DataTable.Buttons showEmpty={variant !== "none"} accessorAlias="actionsCol">
+                <DataTable.Action onClick={() => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
+                <DataTable.Action onClick={() => alert(`${row.price} 1`)}>Price</DataTable.Action>
+              </DataTable.Buttons>
+              <DataTable.Dropdown showEmpty={variant !== "none"} accessorAlias="actionCol2">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DataTable.Action onClick={() => alert(`${row.abbreviation} 1`)}>Abbreviation</DataTable.Action>
+                    <DataTable.Action onClick={() => alert(`${row.amount} 2`)}>Amount</DataTable.Action>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DataTable.Dropdown>
+            </DataTable.Row>
+          ))}
         </DataTable.Table>
         <DataTable.Loading height="h-80">Cargando Posicion...</DataTable.Loading>
         <DataTable.Empty height="h-80">

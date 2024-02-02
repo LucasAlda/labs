@@ -7,7 +7,9 @@ import {
   type DataTableRootProps,
   type CellPropsGeneric,
   type RowProps,
+  type ColProps,
 } from "@/components/datatable/datatable";
+import { type rowVariants } from "@/components/datatable/table";
 import { formatNumber } from "@/lib/utils";
 import {
   type SortingState,
@@ -25,6 +27,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
 } from "@tanstack/react-table";
+import { type VariantProps } from "class-variance-authority";
 import { format } from "date-fns";
 import { type ValueOf } from "next/dist/shared/lib/constants";
 import type { RefObject } from "react";
@@ -48,7 +51,7 @@ export type UseTable<TRow = Record<string, unknown>> = {
   setColumns: Dispatch<SetStateAction<CellProps[]>>;
   columns: CellProps[];
   globalFilter: string;
-  getRows: () => { row: TRow; ctx: Row<TRow> }[];
+  getRows: () => { row: TRow; ctx: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }[];
   setGlobalFilter: Dispatch<SetStateAction<string>>;
   view: ReturnType<typeof useView>;
   prerender?: boolean;
@@ -109,7 +112,7 @@ type ColumnType = ValueOf<typeof columnTypes>;
 export function useColumnsFromChildren(children: ReactNode) {
   const table = useDataTable();
 
-  const columns = Children.map(children as never, (child: { props: CellPropsGeneric; type?: { name: string } }) => {
+  const columns = Children.map(children as never, (child: { props: ColProps; type?: { name: string } }) => {
     if (!child) return null;
     const name = child.type?.name ?? "NO EXISTS";
     return {
@@ -330,6 +333,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   view,
   filter,
   sort,
+  variant,
 }: {
   key?: string;
   data: T | undefined;
@@ -341,6 +345,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   filter?: (row: Row<TRow>, search: string, filter: (row: Row<TRow>) => boolean) => boolean;
   sort?: Record<string, (a: TRow, b: TRow) => number>;
   view?: ReturnType<typeof useView>;
+  variant?: (row: TRow) => { [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean };
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
   const [columns, setColumns] = useState<Array<CellProps>>([]);
@@ -422,8 +427,14 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   });
 
   const getRows = useCallback(() => {
-    return table.getRowModel().rows.map((a) => ({ ctx: a, row: a.original }));
-  }, [table]);
+    return table.getRowModel().rows.map((a) => {
+      const entries = Object.entries(variant?.(a.original as TRow) ?? {}) as Array<
+        [NonNullable<VariantProps<typeof rowVariants>["variant"]>, boolean]
+      >;
+      const selectedVariant = entries.find(([, value]) => value)?.[0] ?? "none";
+      return { variant: selectedVariant, ctx: a, row: a.original };
+    });
+  }, [table, variant]);
 
   const reduce = useCallback(
     <T>(column: (acc: T, row: TRow) => unknown, initial: T, options?: { onlyVisible?: boolean }) => {

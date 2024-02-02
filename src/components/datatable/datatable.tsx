@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { type Row } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
 import { ChevronDown, ChevronRight, MoreHorizontal, Settings2 } from "lucide-react";
-import { type ReactNode, startTransition, createContext, useContext, useMemo } from "react";
+import { type ReactNode, startTransition, createContext, useContext, useMemo, Children } from "react";
 import {
   DataTableContext,
   useDataTable,
@@ -259,6 +259,8 @@ export type RowProps<T = Record<string, unknown>> = {
 };
 
 function Row({ ctx, variant, className, onClick, children }: RowProps) {
+  const a = getRowColumns();
+
   return (
     <Table.Row
       key={ctx.id}
@@ -276,11 +278,60 @@ function Row({ ctx, variant, className, onClick, children }: RowProps) {
     </Table.Row>
   );
 }
+function Cols({ children }: { children: ReactNode }) {
+  const table = useDataTable();
+  useColumnsFromChildren(children);
+
+  const sortedColumns = Children.toArray(children)
+    .filter((col) => {
+      const accessor = getAccessor((col as { props: ColProps }).props);
+      return table.table.getColumn(accessor)?.getIsVisible() ?? true;
+    })
+    .sort((a, b) => {
+      const aOrder = table.view.order?.indexOf(getAccessor((a as { props: ColProps }).props)) ?? -1;
+      const bOrder = table.view.order?.indexOf(getAccessor((b as { props: ColProps }).props)) ?? -1;
+
+      if (aOrder === -1 && bOrder === -1) return 0;
+      if (aOrder === -1) return 1;
+      if (bOrder === -1) return -1;
+      return aOrder - bOrder;
+    });
+  console.log(sortedColumns);
+
+  return sortedColumns;
+}
+
+export type ColProps = {
+  className?: string;
+  label?: string;
+  align?: "center" | "right" | "left";
+  isNumber?: boolean;
+  isDate?: boolean;
+  type?: "column" | "buttons" | "dropdown";
+} & ({ accessor: string } | { accessorAlias: string });
+
+function Col({ className, type, ...props }: ColProps) {
+  const table = useDataTable();
+  const accessor = getAccessor(props);
+  const col = table.table.getColumn(accessor);
+
+  return (
+    <Table.Column key={accessor} className={className} {...props}>
+      <div className={cn(type === "buttons" && "hidden sm:block", type === "dropdown" && "hidden")}>
+        <DataTableColumnHeader
+          column={col}
+          title={props.label ?? ""}
+          labelPlace={props.isNumber ? "right" : props.isDate ? "center" : props.align}
+        />
+      </div>
+    </Table.Column>
+  );
+}
 
 function Rows({ children, onClick, variant, className, footerVariant = "dark" }: RowsProps) {
   const table = useDataTable();
   const columnsProps = useColumnsFromChildren(children);
-  const [columns, title] = useColumns(columnsProps);
+  const columns = useColumns(columnsProps);
 
   const footerColumns = getRowColumns(
     columns,
@@ -572,6 +623,8 @@ export const DataTable = {
   Table: DataTableTable,
   Row: Row,
   Rows: Rows,
+  Cols: Cols,
+  Col: Col,
   Cell: Cell,
   Loading,
   Empty,
