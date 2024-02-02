@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { type Row } from "@tanstack/react-table";
 import { type VariantProps } from "class-variance-authority";
 import { ChevronDown, ChevronRight, MoreHorizontal, Settings2 } from "lucide-react";
-import { type ReactNode, startTransition, createContext, useContext, useMemo } from "react";
+import { type ReactNode, startTransition, createContext, useContext, useMemo, memo } from "react";
 import {
   DataTableContext,
   useDataTable,
@@ -46,11 +46,11 @@ function DataTableRoot({ table, ...props }: DataTableRootProps) {
   );
 }
 
-function Title({ children, className }: { children?: ReactNode; className?: string }) {
+const Title = memo(function Title({ children, className }: { children?: ReactNode; className?: string }) {
   return <h3 className={cn("text-sm font-medium leading-none text-slate-800", className)}>{children}</h3>;
-}
+});
 
-function Search({ className }: { className?: string }) {
+const Search = memo(function Search({ className }: { className?: string }) {
   const { globalFilter, setGlobalFilter } = useDataTable();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -67,7 +67,7 @@ function Search({ className }: { className?: string }) {
       className={cn("h-8 w-full max-w-[14rem]", className)}
     />
   );
-}
+});
 
 type ColumnProp<TRow, TReturn> =
   | TReturn
@@ -94,7 +94,7 @@ export type ColumnProps<TRow = Record<string, unknown>> = ColumnPropsGeneric<TRo
   columnType: "column" | "buttons" | "dropdown";
 };
 
-export function DataTableViewOptions() {
+export const DataTableViewOptions = memo(function DataTableViewOptions() {
   const { table } = useDataTable();
   return (
     <DropdownMenu>
@@ -124,7 +124,7 @@ export function DataTableViewOptions() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
 
 export type RowsProps<TRow = Record<string, unknown>> = {
   children: ReactNode;
@@ -314,7 +314,7 @@ function DropdownDummy(props: ColumnPropsGeneric) {
   return null;
 }
 
-function Column({
+const Column = memo(function Column({
   collapsible: collapsable,
   title,
   className: _className,
@@ -360,7 +360,7 @@ function Column({
       {children ?? (row.original[accessor] as ReactNode)}
     </Table.Cell>
   );
-}
+});
 
 const InsideDropdownContext = createContext(false);
 

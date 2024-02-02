@@ -31,6 +31,7 @@ import { DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from 
 import { generateData } from "@/faker";
 
 import { useEffect, useState } from "react";
+import { useWhyDidYouUpdate } from "use-why-did-you-update";
 
 export default function Example() {
   const [data, setData] = useState<typeof DATA>();
@@ -73,6 +74,8 @@ export default function Example() {
   });
 
   const [condensed, setCondensed] = useState(true);
+
+  useWhyDidYouUpdate("Example", table);
 
   return (
     <div className="space-y-16 py-16 sm:p-16">

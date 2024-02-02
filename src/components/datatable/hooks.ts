@@ -37,6 +37,7 @@ import {
   createContext,
   type ReactNode,
   Children,
+  useLayoutEffect,
 } from "react";
 
 export function getAccessor(column: ColumnPropsGeneric) {
@@ -82,7 +83,7 @@ const columnTypes = {
 
 type ColumnType = ValueOf<typeof columnTypes>;
 
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useEffect : useEffect;
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function useColumnsFromChildren(children: ReactNode) {
   const table = useDataTable();
@@ -155,11 +156,12 @@ export function useView<T extends string | symbol | number = string>(
   key: string | undefined,
   defaultVisibility?: Visibilitys<T>
 ) {
+  const [_defaultVisibility] = useState(defaultVisibility);
   const [size, setSize] = useState<ViewSizes>("lg");
   const [orders, setOrders, orderChanged] = useLocalStorage<Orders>(`table_${key ?? ""}_order`, {});
   const [visibilitys, setVisibilitys, visibilityChanged] = useLocalStorage<Visibilitys>(
     `table_${key ?? ""}_columns`,
-    defaultVisibility ?? {}
+    _defaultVisibility ?? {}
   );
 
   useIsomorphicLayoutEffect(() => {
@@ -227,13 +229,13 @@ export function useView<T extends string | symbol | number = string>(
 
   const reset = useCallback(
     (onSize = size) => {
-      changeVisibility(() => defaultVisibility?.[onSize ?? size] as VisibilityState, onSize ?? size);
+      changeVisibility(() => _defaultVisibility?.[onSize ?? size] as VisibilityState, onSize ?? size);
       changeOrder(() => [], onSize ?? size);
     },
-    [changeOrder, changeVisibility, defaultVisibility, size]
+    [changeOrder, changeVisibility, _defaultVisibility, size]
   );
 
-  return useMemo(
+  const a = useMemo(
     () => ({
       order,
       orders,
@@ -263,6 +265,8 @@ export function useView<T extends string | symbol | number = string>(
       visibilityChanged,
     ]
   );
+
+  return a;
 }
 
 type GetRow<T> = T extends Array<infer K extends Record<string, unknown>>
@@ -449,25 +453,21 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     Action: (props: ActionProps<TRow>) => JSX.Element;
   };
 
-  const returnValue = useMemo(
-    () =>
-      ({
-        table,
-        setColumns,
-        columns,
-        getRows,
-        view: view ?? defaultView,
-        prerender,
-        isEmpty: data?.length === 0,
-        isLoading: data === undefined,
-        globalFilter: search,
-        setGlobalFilter: setSearch,
-        paginationDefault: pagination,
-        reduce: reduce as UseTable<Record<string, unknown>>["reduce"],
-        sum: sum as UseTable<Record<string, unknown>>["sum"],
-      } satisfies UseTable),
-    [table, columns, getRows, view, defaultView, prerender, data, search, pagination, reduce, sum]
-  ) as UseTable<TRow>;
+  const returnValue = {
+    table,
+    setColumns,
+    columns,
+    getRows,
+    view: view ?? defaultView,
+    prerender,
+    isEmpty: data?.length === 0,
+    isLoading: data === undefined,
+    globalFilter: search,
+    setGlobalFilter: setSearch,
+    paginationDefault: pagination,
+    reduce: reduce as UseTable<Record<string, unknown>>["reduce"],
+    sum: sum as UseTable<Record<string, unknown>>["sum"],
+  } satisfies UseTable as UseTable<TRow>;
 
   return [returnValue, DataTable as DateTable] as const;
 }
