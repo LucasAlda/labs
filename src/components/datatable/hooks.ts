@@ -82,6 +82,8 @@ const columnTypes = {
 
 type ColumnType = ValueOf<typeof columnTypes>;
 
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useEffect : useEffect;
+
 export function useColumnsFromChildren(children: ReactNode) {
   const table = useDataTable();
 
@@ -100,7 +102,7 @@ export function useColumnsFromChildren(children: ReactNode) {
   });
 
   // Columns reactivity limited to accessor and accessorAlias;
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     table.setColumns(columns);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns.map((col) => getAccessor(col)).join(",")]);
@@ -135,7 +137,7 @@ export function useColumns(columns: ColumnProps[]) {
   const title = columnsInfo.find((col) => col.props.title);
   if (title) title.col = table.table.getAllColumns().find((col) => col.id === title.accessor);
 
-  const visibleColumns = columnsInfo.filter((col) => col.col?.getIsVisible());
+  const visibleColumns = columnsInfo.filter((col) => table.view.visibility?.[col.accessor] !== false);
   return [visibleColumns, title] as const;
 }
 
@@ -160,7 +162,7 @@ export function useView<T extends string | symbol | number = string>(
     defaultVisibility ?? {}
   );
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     function onResize() {
       if (window.innerWidth < 640) {
         setSize("sm");
