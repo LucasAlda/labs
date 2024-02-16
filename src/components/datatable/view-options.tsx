@@ -51,10 +51,14 @@ export function ViewOptions() {
 
           <label className="pl-0.5 text-xs font-semibold text-slate-600">Ordenado Por</label>
           <div className="flex  gap-2 overflow-hidden">
-            <Select value={view.sort[0]?.id} onValueChange={(col) => view.changeSort([{ id: col, desc: false }])}>
-              <SelectTrigger className="truncate">
+            <Select
+              value={view.sort[0]?.id ?? "__none__"}
+              onValueChange={(col) => view.changeSort(col === "__none__" ? [] : [{ id: col, desc: false }])}
+            >
+              <SelectTrigger className="h-8 truncate">
                 <SelectValue placeholder="Columna" />
                 <SelectContent>
+                  <SelectItem value="__none__">Sin orden</SelectItem>
                   {table
                     .getAllColumns()
                     .filter((column) => typeof column.accessorFn !== "undefined")
@@ -72,7 +76,7 @@ export function ViewOptions() {
                 value={view.sort[0]?.desc ? "desc" : "asc"}
                 onValueChange={(way) => view.changeSort([{ id: view.sort[0]!.id, desc: way === "desc" }])}
               >
-                <SelectTrigger className="w-20 min-w-max flex-shrink-0">
+                <SelectTrigger className="h-8 w-20 min-w-max flex-shrink-0">
                   <SelectValue placeholder="Orden" />
                   <SelectContent>
                     <SelectItem value="asc">Asc</SelectItem>
