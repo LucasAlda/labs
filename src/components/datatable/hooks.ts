@@ -163,6 +163,7 @@ export function useView<T extends string | symbol | number = string>(
     `table_${key ?? ""}_columns`,
     _defaultVisibility ?? {}
   );
+  const [sort, setSort, sortChanged] = useLocalStorage<SortingState>(`table_${key ?? ""}_sort`, []);
 
   useIsomorphicLayoutEffect(() => {
     function onResize() {
@@ -186,7 +187,8 @@ export function useView<T extends string | symbol | number = string>(
   const save = useCallback(() => {
     setVisibilitys((v) => v, true);
     setOrders((o) => o, true);
-  }, [setVisibilitys, setOrders]);
+    setSort((s) => s, true);
+  }, [setVisibilitys, setOrders, setSort]);
 
   const changeOrder = useCallback(
     (order: Updater<string[]>, onSize = size) => {
@@ -227,12 +229,23 @@ export function useView<T extends string | symbol | number = string>(
     [visibilitys]
   );
 
+  const changeSort = useCallback(
+    (sort: Updater<SortingState>) => {
+      setSort((prev) => {
+        const newSort = typeof sort === "function" ? sort(prev) : sort;
+        return newSort;
+      }, false);
+    },
+    [setSort]
+  );
+
   const reset = useCallback(
     (onSize = size) => {
       changeVisibility(() => _defaultVisibility?.[onSize ?? size] as VisibilityState, onSize ?? size);
       changeOrder(() => [], onSize ?? size);
+      setSort(() => [], false);
     },
-    [changeOrder, changeVisibility, _defaultVisibility, size]
+    [size, changeVisibility, changeOrder, setSort, _defaultVisibility]
   );
 
   const a = useMemo(
@@ -246,7 +259,9 @@ export function useView<T extends string | symbol | number = string>(
       changeVisibility,
       reset,
       toggleVisibility,
-      isChanged: key && (orderChanged || visibilityChanged),
+      sort,
+      changeSort,
+      isChanged: key && (orderChanged || visibilityChanged || sortChanged),
       save,
     }),
     [
@@ -259,7 +274,10 @@ export function useView<T extends string | symbol | number = string>(
       orders,
       reset,
       save,
+      changeSort,
       size,
+      sort,
+      sortChanged,
       toggleVisibility,
       visibility,
       visibilityChanged,
@@ -337,7 +355,6 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
   view?: ReturnType<typeof useView>;
 }) {
   const [columns, setColumns] = useState<Array<ColumnProps>>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [paginationState, setPaginationState] = useState<PaginationState>(() => ({
     pageSize: pagination ?? 10000,
     pageIndex: 0,
@@ -388,7 +405,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     data: data ?? emptyArray,
     columns: tanstackColumns,
     state: {
-      sorting,
+      sorting: view?.sort ?? defaultView.sort,
       columnVisibility: view?.visibility ?? defaultView.visibility,
       expanded,
       pagination: paginationState,
@@ -405,7 +422,7 @@ export function useTable<T extends Array<Record<string, unknown>>, TRow = GetRow
     onColumnVisibilityChange: view?.changeVisibility ?? defaultView.changeVisibility,
     enableRowSelection: true,
     getFilteredRowModel: getFilteredRowModel(),
-    onSortingChange: setSorting,
+    onSortingChange: (sort) => (view?.changeSort ?? defaultView.changeSort)(sort),
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     sortingFns: {

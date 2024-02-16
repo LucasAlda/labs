@@ -1,6 +1,7 @@
 import { type ViewSizes, useDataTable } from "@/components/datatable/hooks";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -24,7 +25,7 @@ import { Eye, EyeOff, GripHorizontal, Laptop, Monitor, Settings2, Smartphone } f
 import { type ReactNode, type SetStateAction, useEffect, useState } from "react";
 
 export function ViewOptions() {
-  const { view } = useDataTable();
+  const { view, table } = useDataTable();
   const [size, setSize] = useState<ViewSizes>("lg");
 
   useEffect(() => {
@@ -34,20 +35,55 @@ export function ViewOptions() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-auto  flex h-8 bg-white">
+        <Button variant="outline" size="sm" className="ml-auto flex h-8 bg-white">
           <Settings2 className="mr-2 h-4 w-4" />
           Vista
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64" align="end">
         <div className="grid gap-2">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <h4 className="font-medium leading-none">Columnas</h4>
             <Button size="sm" variant="link" className="text-slate-400" onClick={() => view.reset(size)}>
               Reset
             </Button>
           </div>
 
+          <label className="pl-0.5 text-xs font-semibold text-slate-600">Ordenado Por</label>
+          <div className="flex  gap-2 overflow-hidden">
+            <Select value={view.sort[0]?.id} onValueChange={(col) => view.changeSort([{ id: col, desc: false }])}>
+              <SelectTrigger className="truncate">
+                <SelectValue placeholder="Columna" />
+                <SelectContent>
+                  {table
+                    .getAllColumns()
+                    .filter((column) => typeof column.accessorFn !== "undefined")
+                    .map((col) => (
+                      <SelectItem key={col.id} value={col.id}>
+                        {col.columnDef.header?.toString()}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </SelectTrigger>
+            </Select>
+
+            {view.sort[0] && (
+              <Select
+                value={view.sort[0]?.desc ? "desc" : "asc"}
+                onValueChange={(way) => view.changeSort([{ id: view.sort[0]!.id, desc: way === "desc" }])}
+              >
+                <SelectTrigger className="w-20 min-w-max flex-shrink-0">
+                  <SelectValue placeholder="Orden" />
+                  <SelectContent>
+                    <SelectItem value="asc">Asc</SelectItem>
+                    <SelectItem value="desc">Desc</SelectItem>
+                  </SelectContent>
+                </SelectTrigger>
+              </Select>
+            )}
+          </div>
+
+          <label className="mt-2 pl-0.5 text-xs font-semibold text-slate-600">Columnas</label>
           <Tabs value={size} onValueChange={(value) => setSize(value as ViewSizes)}>
             <TabsList className="h-8 w-full">
               <TabsTrigger className="h-6 w-full" value="sm">

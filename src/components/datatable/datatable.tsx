@@ -447,7 +447,14 @@ function DatabaseAction({ className: _className, disabled: _disabled, children: 
     if (props.onClick) props.onClick({ row: row.original, variant: variant ?? "none", controller: row });
   }
 
-  if (insideDropdown) return !disabled && <DropdownMenuItem onClick={handleClick}>{children}</DropdownMenuItem>;
+  if (insideDropdown)
+    return (
+      !disabled && (
+        <DropdownMenuItem onClick={handleClick} className={className}>
+          {children}
+        </DropdownMenuItem>
+      )
+    );
   return (
     <Button size="sm" {...props} disabled={disabled} className={cn("h-6 px-2", className)} onClick={handleClick}>
       {children}

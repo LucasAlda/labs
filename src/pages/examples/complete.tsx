@@ -51,7 +51,7 @@ export default function Example() {
       date: false,
       id: false,
       title: false,
-      actions: false,
+      actionsCol: false,
     },
   });
 
@@ -120,6 +120,12 @@ export default function Example() {
               accessorAlias="actionCol2"
               label="Acciones2"
             >
+              <DataTable.Action className="sm:hidden" onClick={({ row }) => alert(`${row.amount} 2`)}>
+                Amount
+              </DataTable.Action>
+              <DataTable.Action className="sm:hidden" onClick={({ row }) => alert(`${row.price} 1`)}>
+                Price
+              </DataTable.Action>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
