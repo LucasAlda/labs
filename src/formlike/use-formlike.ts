@@ -1,24 +1,11 @@
-import { type SetStateAction, useCallback, useState, useMemo, useEffect } from "react";
+import { type SetStateAction, useCallback, useState, useMemo, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { createContext, useContextSelector } from "use-context-selector";
 import { z } from "zod";
 
 /***   Utility Types   ***/
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Prettify<T> = T & {};
-
-type NesteableRecord<T> = {
-  [x: string]: T | NesteableRecord<T>;
-};
-
-export type GetPaths<TObj extends GenericObject> = {
-  [TKey in keyof TObj]: TKey extends string
-    ? TObj[TKey] extends FieldLikeAny
-      ? `${TKey}`
-      : TObj[TKey] extends GenericObject
-      ? `${TKey}.${GetPaths<TObj[TKey]>}`
-      : never
-    : never;
-}[keyof TObj];
 
 /***   Context   ***/
 export function createFormLikeContext<T extends FormLikeAny>() {
@@ -31,17 +18,22 @@ export function createFormLikeContext<T extends FormLikeAny>() {
 
 /***    Fieldlike     ***/
 export type FieldLike<T> = {
-  __type: "fieldlike";
   get: () => T;
   set: (value: T) => void;
   reset: () => void;
+  error: () => string | undefined;
+  rawErrors: { field: string | undefined; form: string | undefined };
   setError: (error: string | undefined) => void;
+  setFormError: (error: string | undefined) => void;
   clearError: () => void;
-  error: string | undefined;
+  errorSource: "field" | "form";
+  formStatus: "errored" | "valid" | "idle";
+  setFormStatus: (status: "errored" | "valid" | "idle") => void;
   isDirty: boolean;
   isMounted: boolean;
   mount: () => void;
   unmount: () => void;
+  validateRef: React.MutableRefObject<((props: never) => void) | null>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,7 +42,10 @@ export type FieldLikeAny = FieldLike<any>;
 export function useFieldLike<FormLike>(_defaultValue: FormLike) {
   const [defaultValue, setDefaultValue] = useState(_defaultValue);
   const [value, _setValue] = useState(defaultValue);
-  const [error, setError] = useState<string>();
+  const [_error, setError] = useState<string>();
+  const [_formError, setFormError] = useState<string>();
+  const validateRef = useRef<() => void>(null);
+  const [formStatus, setFormStatus] = useState<"errored" | "valid" | "idle">("idle");
   const [isDirty, setDirty] = useState(false);
   const [isMounted, _setMounted] = useState(false);
 
@@ -64,16 +59,28 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
   }, [_defaultValue, defaultValue, isDirty]);
 
   const get = useCallback(() => value, [value]);
+  const error = useCallback(() => _formError ?? _error, [_error, _formError]);
 
-  const set = useCallback((value: SetStateAction<FormLike>) => {
-    _setValue(value);
-    setDirty(true);
-  }, []);
+  const set = useCallback(
+    (value: SetStateAction<FormLike>) => {
+      if (formStatus !== "idle") {
+        flushSync(() => {
+          _setValue(value);
+        });
+        validateRef.current?.();
+      } else {
+        _setValue(value);
+      }
+      setDirty(true);
+    },
+    [formStatus]
+  );
 
   const reset = useCallback(() => {
     _setValue(defaultValue);
-    setDirty(false);
     setError(undefined);
+    setFormError(undefined);
+    setDirty(false);
   }, [defaultValue]);
 
   const clearError = useCallback(() => setError(undefined), []);
@@ -82,172 +89,171 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
 
   const actions = useMemo(() => {
     return {
-      __type: "fieldlike",
       get,
       set,
       reset,
-      setError,
-      clearError,
       error,
+      rawErrors: { field: _error, form: _formError },
+      errorSource: _formError ? "form" : "field",
+      setError,
+      formStatus,
+      setFormStatus,
+      setFormError,
+      clearError,
       isDirty,
       isMounted,
       mount,
       unmount,
+      validateRef,
     } satisfies FieldLike<FormLike>;
-  }, [get, set, reset, clearError, error, isDirty, isMounted, mount, unmount]);
+  }, [get, set, reset, error, _error, _formError, formStatus, clearError, isDirty, isMounted, mount, unmount]);
 
   return actions;
 }
 
 /***    Formlike     ***/
-export type FormLikeAny = NesteableRecord<FieldLikeAny>;
+export type FormLikeAny = Record<string, FieldLikeAny>;
 
 export type FormLikeValue<TForm extends FormLikeAny> = Prettify<{
-  [K in keyof TForm]: TForm[K] extends FieldLikeAny
-    ? ReturnType<TForm[K]["get"]>
-    : TForm[K] extends FormLikeAny
-    ? FormLikeValue<TForm[K]>
-    : never;
+  [K in keyof TForm]: ReturnType<TForm[K]["get"]>;
 }>;
 
 export type FormLikeFieldError<TForm extends FormLikeAny> = Prettify<{
-  [K in keyof TForm]: TForm[K] extends FieldLikeAny
-    ? TForm[K]["error"]
-    : TForm[K] extends FormLikeAny
-    ? FormLikeValue<TForm[K]>
-    : never;
+  [K in keyof TForm]: ReturnType<TForm[K]["error"]>;
 }>;
 
-export type FormLike<TForm extends FormLikeAny> = {
-  __type: "formlike";
-  form: TForm;
-  get: () => FormLikeValue<TForm>;
-  getFieldErrors: () => Record<GetPaths<TForm>, string | undefined>;
-  getUnmountedErrors: () => Record<GetPaths<TForm>, string | undefined>;
-  reset: () => void;
-  validate: (cb?: (value: FormLikeValue<TForm>) => void) => boolean;
-  errors: Record<GetPaths<TForm>, string | undefined>;
-};
+// export type FormLike<TForm extends FormLikeAny> = {
+//   form: TForm;
+//   get: () => FormLikeValue<TForm>;
+//   errors: () => { [K in keyof TForm]?: TForm[K]["error"] };
+//   unmountedErrors: () => { [K in keyof TForm]?: TForm[K]["error"] };
+//   reset: () => void;
+//   validate: (props?: {
+//     valid?: (value: FormLikeValue<TForm>) => void;
+//     invalid?: (errors: Record<string, string>) => void;
+//   }) => boolean;
+//   submit: (cb?: (value: FormLikeValue<TForm>) => void) => boolean;
+// };
+
+export type FormLike<TForm extends FormLikeAny> = ReturnType<typeof useFormLike<TForm, z.ZodType>>;
 
 export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType>(options: {
   form: TForm;
   schema: TSchema;
   onValid?: (value: z.infer<TSchema>) => void;
-  onError?: (_errors: Record<GetPaths<TForm>, string | undefined>) => void;
-}): FormLike<TForm> {
-  const [errors, setErrors] = useState<Record<GetPaths<TForm>, string | undefined>>({} as never);
+  onError?: (errors: Record<string, string>) => void;
+}) {
+  const [formStatus, setFormStatus] = useState<"errored" | "valid" | "idle">("idle");
 
   const get = useCallback(() => {
-    return _get(options.form);
+    return Object.keys(options.form).reduce((acc, key) => {
+      acc[key] = options.form[key]?.get();
+      return acc;
+    }, {} as Record<string, unknown>) as FormLikeValue<TForm>;
   }, [options.form]);
 
-  const getFieldErrors = useCallback(() => {
-    return flattenObject(_fieldErrors(options.form)) as Record<string, string | undefined>;
+  const errors = useCallback(() => {
+    return Object.keys(options.form).reduce((acc, key) => {
+      acc[key] = options.form[key]?.error();
+      return acc;
+    }, {} as Record<string, unknown>) as FormLikeFieldError<TForm>;
   }, [options.form]);
 
-  const getUnmountedErrors = useCallback(() => {
-    return flattenObject(_unmountedFieldErrors(options.form)) as Record<string, string | undefined>;
+  const unmountedErrors = useCallback(() => {
+    return Object.keys(options.form).reduce((acc, key) => {
+      const field = options.form[key];
+      acc[key] = field?.isMounted ? undefined : options.form[key]?.error();
+      return acc;
+    }, {} as Record<string, unknown>) as FormLikeFieldError<TForm>;
   }, [options.form]);
+
+  const setFormErrors = useCallback(
+    (errors: Record<string, string>) => {
+      // ordenados primero los errores mas especificos sobre los contenidos en el
+      const errorsEntries = Object.entries(errors);
+      errorsEntries.sort(([a], [b]) => (a.includes(b) ? -1 : b.includes(a) ? 1 : a.localeCompare(b)));
+
+      Object.entries(options.form).forEach(([key, field]) => {
+        const fieldErrorIndex = errorsEntries.findIndex(([errorKey]) => errorKey.includes(key));
+        field.setFormError(fieldErrorIndex === -1 ? undefined : errorsEntries[fieldErrorIndex]?.[1]);
+        if (fieldErrorIndex >= 0) errorsEntries.splice(fieldErrorIndex, 1);
+      });
+    },
+    [options.form]
+  );
+
+  const updateFormStatus = useCallback(
+    (status: "errored" | "valid" | "idle") => {
+      Object.values(options.form).forEach((field) => field.setFormStatus(status));
+      setFormStatus(status);
+    },
+    [options.form]
+  );
 
   const reset = useCallback(() => {
-    return _reset(options.form);
-  }, [options.form]);
+    updateFormStatus("idle");
+    return Object.keys(options.form).reduce((acc, key) => {
+      acc[key] = options.form[key]?.reset();
+      return acc;
+    }, {} as Record<string, unknown>) as FormLikeValue<TForm>;
+  }, [options.form, updateFormStatus]);
 
   const validate = useCallback(
-    (cb?: (value: z.infer<TSchema>) => void) => {
-      const schema = options.schema;
-      if (!schema) return false;
+    (props?: { valid?: (value: z.infer<TSchema>) => void; invalid?: (errors: Record<string, string>) => void }) => {
       try {
+        const schema = options.schema;
+        if (!schema) return false;
         const value = get();
-        const res = schema.parse(value) as z.infer<TSchema>;
-        setErrors({} as never);
-        cb?.(res);
-        options.onValid?.(res);
+        schema.parse(value);
+        setFormErrors({} as never);
+        updateFormStatus("valid");
+        props?.valid?.(value as z.infer<TSchema>);
         return true;
       } catch (error) {
         if (error instanceof z.ZodError) {
-          setErrors(
-            error.errors.reduce((acc, error) => ({ ...acc, [error.path.join(".")]: error.message }), {}) as never
-          );
+          const errorsObj = error.errors.reduce(
+            (acc, error) => ({ ...acc, [error.path.join(".")]: error.message }),
+            {}
+          ) as Record<string, string>;
+          setFormErrors(errorsObj);
+          updateFormStatus("errored");
+          props?.invalid?.(errorsObj);
         }
-        options.onError?.(errors);
         return false;
       }
     },
-    [errors, get, options]
+    [get, options.schema, setFormErrors, updateFormStatus]
   );
+
+  const submit = useCallback(
+    (cb?: (value: z.infer<TSchema>) => void) => {
+      const valid = validate({
+        valid: (res) => {
+          cb?.(res);
+          options.onValid?.(res);
+        },
+        invalid: (errors) => options.onError?.(errors),
+      });
+
+      return valid;
+    },
+    [options, validate]
+  );
+
+  Object.values(options.form).forEach((field) => {
+    field.validateRef.current = validate;
+  });
 
   return useMemo(() => {
     return {
-      __type: "formlike",
       form: options.form,
-      getFieldErrors,
-      getUnmountedErrors,
+      errors,
+      unmountedErrors,
       get,
       reset,
       validate,
-      errors,
-    } satisfies FormLike<TForm>;
-  }, [options.form, getFieldErrors, getUnmountedErrors, get, reset, validate, errors]);
+      submit,
+      formStatus,
+    };
+  }, [options.form, errors, unmountedErrors, get, reset, validate, submit, formStatus]);
 }
-
-function _get<TForm extends FormLikeAny>(form: TForm): FormLikeValue<TForm> {
-  if ("get" in form && typeof form.get === "function") {
-    return (form as unknown as FieldLikeAny).get() as never;
-  }
-  return Object.keys(form).reduce((acc, key) => {
-    acc[key] = _get(form[key] as never);
-    return acc;
-  }, {} as Record<string, unknown>) as FormLikeValue<TForm>;
-}
-
-function _fieldErrors<TForm extends FormLikeAny>(form: TForm): FormLikeFieldError<TForm> {
-  if ("error" in form) {
-    return (form as unknown as FieldLikeAny).error as never;
-  }
-  return Object.keys(form).reduce((acc, key) => {
-    acc[key] = _fieldErrors(form[key] as never);
-    return acc;
-  }, {} as Record<string, unknown>) as FormLikeFieldError<TForm>;
-}
-
-function _unmountedFieldErrors<TForm extends FormLikeAny>(form: TForm): FormLikeFieldError<TForm> {
-  if ("error" in form && "isMounted" in form) {
-    if (form.isMounted) return undefined as never;
-    return (form as unknown as FieldLikeAny).error as never;
-  }
-  return Object.keys(form).reduce((acc, key) => {
-    const recError = _unmountedFieldErrors(form[key] as never);
-    if (recError) acc[key] = recError;
-    return acc;
-  }, {} as Record<string, unknown>) as FormLikeFieldError<TForm>;
-}
-
-function _reset<TForm extends FormLikeAny>(form: TForm) {
-  if ("reset" in form && typeof form.reset === "function") {
-    return (form as unknown as FieldLikeAny).reset();
-  }
-  Object.keys(form).forEach((key) => {
-    _reset(form[key] as never);
-  });
-}
-
-const isObjectOrArray = (val: unknown) => {
-  const toStringVal = Object.prototype.toString.call(val);
-  return ["[object Object]", "[object Array]"].includes(toStringVal);
-};
-
-type GenericObject = Record<string, unknown>;
-export const flattenObject = (obj: GenericObject, roots = []) => {
-  const keys = Object.keys(obj);
-
-  return keys.reduce((memo, prop) => {
-    const isNested = isObjectOrArray(obj[prop]);
-
-    const newRoots: GenericObject = isNested
-      ? flattenObject(obj[prop] as GenericObject, roots.concat([prop as never]))
-      : { [roots.concat([prop as never]).join(".")]: obj[prop] };
-
-    return Object.assign({}, memo, newRoots);
-  }, {} as GenericObject);
-};

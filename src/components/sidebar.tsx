@@ -5,7 +5,7 @@ import { Menu as MenuIcon } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 
 export const Sidebar = () => {
-  const [show, setShow] = useState(true);
+  const [show, setShow] = useState(false);
 
   return (
     <>
@@ -55,7 +55,7 @@ export const Sidebar = () => {
 const MainMenu = ({ setShow }: { setShow: (show: boolean) => void }) => {
   return (
     <Menu onNavigate={() => setShow(false)}>
-      <Menu.Dropdown path="/examples" label="Ejemplos">
+      <Menu.Dropdown path="/datatable" label="DataTable">
         <Menu.Option path="/start">Start</Menu.Option>
         <Menu.Option path="/no-container">No container</Menu.Option>
         <Menu.Option path="/extras">Extras</Menu.Option>
@@ -65,6 +65,9 @@ const MainMenu = ({ setShow }: { setShow: (show: boolean) => void }) => {
         <Menu.Option path="/action">Actions</Menu.Option>
         <Menu.Option path="/complete">Complete</Menu.Option>
         <Menu.Option path="/ssr">SRR</Menu.Option>
+      </Menu.Dropdown>
+      <Menu.Dropdown path="/formlike" label="Formlike">
+        <Menu.Option path="/start">Start</Menu.Option>
       </Menu.Dropdown>
     </Menu>
   );
