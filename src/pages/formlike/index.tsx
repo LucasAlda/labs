@@ -1,4 +1,4 @@
-import { Input } from "@/formlike/components";
+import { FieldInput } from "@/formlike/components";
 import { useFieldLike, type FieldLike, createFormLikeContext, useFormLike, type FormLike } from "@/formlike/hooks";
 import { memo } from "react";
 import { z } from "zod";
@@ -24,11 +24,9 @@ type Contact = {
     city: string;
     street: string;
   }>;
-  comunication: {
-    phone: FieldLike<string | undefined>;
-    email: FieldLike<number>;
-    isSuscribed: FieldLike<boolean>;
-  };
+  phone: FieldLike<string | undefined>;
+  email: FieldLike<number>;
+  isSuscribed: FieldLike<boolean>;
 };
 
 const [ContactForm, useContactCtx] = createFormLikeContext<Contact>();
@@ -42,18 +40,16 @@ export default function Page() {
         city: "",
         street: "",
       }),
-      comunication: {
-        phone: useFieldLike<string | undefined>(undefined),
-        email: useFieldLike(1),
-        isSuscribed: useFieldLike(true),
-      },
+      phone: useFieldLike<string | undefined>(undefined),
+      email: useFieldLike(1),
+      isSuscribed: useFieldLike(true),
     },
     schema,
     onValid: (value) => console.log({ value }),
     onError: (errors) => console.log(errors),
   }) satisfies FormLike<Contact>;
 
-  console.log("test", contact.getUnmountedErrors());
+  console.log("test", contact.unmountedErrors());
 
   return (
     <ContactForm value={contact}>
@@ -102,7 +98,7 @@ const FieldErrors = memo(function Name() {
   const contact = useContactCtx((c) => c);
   return (
     <Card title="Field Errors">
-      <ViewJSON data={contact.getUnmountedErrors()} />
+      <ViewJSON data={contact.unmountedErrors()} />
     </Card>
   );
 });
@@ -119,8 +115,8 @@ const Name = memo(function Name() {
 });
 
 const Phone = memo(function Phone() {
-  const phone = useContactCtx((c) => c.form.comunication.phone);
-  const errors = useContactCtx((c) => c.errors["comunication.phone"]);
+  const phone = useContactCtx((c) => c.form.phone);
+  const errors = useContactCtx((c) => c.form.phone.error());
 
   function toggleMount() {
     if (phone.isMounted) {
@@ -172,7 +168,7 @@ const AddressInput = memo(function AddressInput() {
 });
 
 const PhoneInput = memo(function PhoneInput() {
-  const phone = useContactCtx((c) => c.form.comunication.phone);
+  const phone = useContactCtx((c) => c.form.phone);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     phone.set(e.target.value);
@@ -181,7 +177,7 @@ const PhoneInput = memo(function PhoneInput() {
 
   return (
     <Card title="Phone Editor">
-      <Input className="block rounded border border-slate-300 p-1 px-2" field={phone} />
+      <FieldInput className="block rounded border border-slate-300 p-1 px-2" field={phone} />
       <input className="block rounded border border-slate-300 p-1 px-2" onChange={handleChange} value={phone.get()} />
     </Card>
   );
