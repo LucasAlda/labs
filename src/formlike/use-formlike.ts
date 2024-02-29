@@ -19,7 +19,7 @@ export function createFormLikeContext<T extends FormLikeAny>() {
 /***    Fieldlike     ***/
 export type FieldLike<T> = {
   get: () => T;
-  set: (value: T) => void;
+  set: (value: SetStateAction<T>, keepIsDirtyFalse?: boolean) => void;
   reset: () => void;
   error: () => string | undefined;
   rawErrors: { field: string | undefined; form: string | undefined };
@@ -39,7 +39,7 @@ export type FieldLike<T> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FieldLikeAny = FieldLike<any>;
 
-export function useFieldLike<FormLike>(_defaultValue: FormLike) {
+export function useFieldLike<T>(_defaultValue: T): FieldLike<T> {
   const [defaultValue, setDefaultValue] = useState(_defaultValue);
   const [value, _setValue] = useState(defaultValue);
   const [_error, setError] = useState<string>();
@@ -62,16 +62,16 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
   const error = useCallback(() => _formError ?? _error, [_error, _formError]);
 
   const set = useCallback(
-    (value: SetStateAction<FormLike>) => {
+    (valueAction: SetStateAction<T>, keepIsDirtyFalse = false) => {
       if (formStatus !== "idle") {
         flushSync(() => {
-          _setValue(value);
+          _setValue(valueAction);
         });
         validateRef.current?.();
       } else {
-        _setValue(value);
+        _setValue(valueAction);
       }
-      setDirty(true);
+      if (!keepIsDirtyFalse) setDirty(true);
     },
     [formStatus]
   );
@@ -94,7 +94,7 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
       reset,
       error,
       rawErrors: { field: _error, form: _formError },
-      errorSource: _formError ? "form" : "field",
+      errorSource: _formError ? ("form" as const) : ("field" as const),
       setError,
       formStatus,
       setFormStatus,
@@ -105,7 +105,7 @@ export function useFieldLike<FormLike>(_defaultValue: FormLike) {
       mount,
       unmount,
       validateRef,
-    } satisfies FieldLike<FormLike>;
+    };
   }, [get, set, reset, error, _error, _formError, formStatus, clearError, isDirty, isMounted, mount, unmount]);
 
   return actions;
@@ -205,6 +205,8 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
         if (!schema) return false;
         const value = get();
         schema.parse(value);
+        const areFieldErrors = Object.values(errors()).filter(Boolean).length > 0;
+        if (areFieldErrors) throw new Error("Field errors");
         setFormErrors({} as never);
         updateFormStatus("valid");
         props?.valid?.(value as z.infer<TSchema>);
@@ -216,13 +218,13 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
             {}
           ) as Record<string, string>;
           setFormErrors(errorsObj);
-          updateFormStatus("errored");
           props?.invalid?.(errorsObj);
         }
+        updateFormStatus("errored");
         return false;
       }
     },
-    [get, options.schema, setFormErrors, updateFormStatus]
+    [errors, get, options.schema, setFormErrors, updateFormStatus]
   );
 
   const submit = useCallback(

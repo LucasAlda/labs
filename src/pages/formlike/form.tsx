@@ -1,18 +1,23 @@
-import { Error, Input } from "@/formlike/components";
+import { FieldError, FieldInfo, FieldInput, UnmountedErrors } from "@/formlike/components";
 import { useFieldLike, useFormLike } from "@/formlike/use-formlike";
 import { z } from "zod";
 
 const schema = z.object({
-  name: z.string(),
-  age: z.number(),
-  phone: z.string().min(10, { message: "Sabes escribir un telefono?" }),
+  name: z.string({ required_error: "El nombre es obligatorio", invalid_type_error: "El nombre debe ser un texto" }),
+  age: z.number({ required_error: "La edad es obligatoria", invalid_type_error: "La edad debe ser un numero" }),
+  phone: z
+    .string({
+      required_error: "El telefono es obligatorio",
+      invalid_type_error: "El telefono debe ser en formato texto",
+    })
+    .min(8, { message: "Sabes escribir un telefono?" }),
 });
 
 export default function Page() {
   const contact = useFormLike({
     form: {
       name: useFieldLike<string | undefined>(undefined),
-      age: useFieldLike<number>(0),
+      age: useFieldLike<number | undefined>(undefined),
       phone: useFieldLike<string | undefined>(undefined),
     },
     schema,
@@ -33,20 +38,30 @@ export default function Page() {
             <ViewJSON data={contact.errors()} />
           </Card>
           <Card title="Unmounted Errors">
-            <ViewJSON data={contact.unmountedErrors()} />
+            <UnmountedErrors form={contact} />
           </Card>
         </div>
         <Card title="Name">
-          <Input field={contact.form.name} />
-          <Error field={contact.form.name} />
+          <FieldInput field={contact.form.name} />
+          <FieldError field={contact.form.name}>Flaco no sabes tu nombre?</FieldError>
+          <FieldInfo field={contact.form.name} />
         </Card>
         <Card title="Age">
-          <Input field={contact.form.age} valueFormatter={(val) => Number(val)} />
-          <Error field={contact.form.age} />
+          <FieldInput field={contact.form.age} valueFormatter={(val) => Number(val)} />
+          <FieldError field={contact.form.age} />
+          <FieldInfo field={contact.form.age} />
         </Card>
         <Card title="Phone">
-          <Input field={contact.form.phone} />
-          <Error field={contact.form.phone} />
+          <FieldInput
+            field={contact.form.phone}
+            onChange={(e) => {
+              e.target.value.length > 12
+                ? contact.form.phone.setError("Tan largo va a ser??")
+                : contact.form.phone.setError(undefined);
+            }}
+          />
+          <FieldError field={contact.form.phone} />
+          <FieldInfo field={contact.form.phone} />
         </Card>
         <Card title="Validate">
           <Button onClick={() => contact.submit()}>Validar</Button>
