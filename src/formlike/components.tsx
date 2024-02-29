@@ -1,4 +1,4 @@
-import { type FormLikeAny, type FieldLikeAny, type FormLike } from "@/formlike/use-formlike";
+import { type FormLikeAny, type FieldLikeAny, type FormLike } from "@/formlike/hooks";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { forwardRef, memo, type ForwardedRef, useEffect } from "react";

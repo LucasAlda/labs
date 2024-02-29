@@ -1,5 +1,5 @@
 import { FieldError, FieldInfo, FieldInput, UnmountedErrors } from "@/formlike/components";
-import { useFieldLike, useFormLike } from "@/formlike/use-formlike";
+import { useFieldLike, useFormLike } from "@/formlike/hooks";
 import { z } from "zod";
 
 const schema = z.object({

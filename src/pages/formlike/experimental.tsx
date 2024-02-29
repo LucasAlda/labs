@@ -1,5 +1,5 @@
 import { Input } from "@/formlike/components";
-import { useFieldLike, useFormLike, type FormLike, type FieldLike } from "@/formlike/use-formlike";
+import { useFieldLike, useFormLike, type FormLike, type FieldLike } from "@/formlike/hooks";
 import { z } from "zod";
 
 const schema = z.object({

@@ -1,11 +1,5 @@
 import { Input } from "@/formlike/components";
-import {
-  useFieldLike,
-  type FieldLike,
-  createFormLikeContext,
-  useFormLike,
-  type FormLike,
-} from "@/formlike/use-formlike";
+import { useFieldLike, type FieldLike, createFormLikeContext, useFormLike, type FormLike } from "@/formlike/hooks";
 import { memo } from "react";
 import { z } from "zod";
 
