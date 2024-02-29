@@ -1,16 +1,18 @@
 import { type FormLikeAny, type FieldLikeAny, type FormLike } from "@/formlike/hooks";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { forwardRef, memo, type ForwardedRef, useEffect } from "react";
+import { forwardRef, memo, type ForwardedRef, useEffect, type ReactNode } from "react";
 
 export type InputProps<T extends FieldLikeAny> = React.InputHTMLAttributes<HTMLInputElement> & {
   field: T;
+  noValidation?: boolean;
+  keepIsDirtyFalse?: boolean;
   valueFormatter?: (value: string) => ReturnType<T["get"]>;
 };
 export const FieldInput = memo(
   forwardRef(
     <T extends FieldLikeAny>(
-      { field, onChange, valueFormatter, ...props }: InputProps<T>,
+      { field, onChange, noValidation, valueFormatter, ...props }: InputProps<T>,
       ref: ForwardedRef<HTMLInputElement>
     ) => {
       useEffect(() => {
@@ -19,7 +21,7 @@ export const FieldInput = memo(
       }, [field]);
 
       function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-        field.set(valueFormatter ? valueFormatter(e.target.value) : e.target.value);
+        field.set(valueFormatter ? valueFormatter(e.target.value) : e.target.value, { noValidation });
         onChange?.(e);
       }
 
@@ -31,18 +33,38 @@ export const FieldInput = memo(
 export const FieldError = memo(function Error<T extends FieldLikeAny>({
   field,
   className,
-  show = "errored",
+  beforeError = "info",
+  info,
   children,
   ...props
 }: React.InputHTMLAttributes<HTMLParagraphElement> & {
   field: T;
-  show?: "allways" | "errored";
+  beforeError?: "info" | "warn" | "error";
   children?: React.ReactNode;
+  info?: ReactNode;
 }) {
   const error = field.error();
+  const maxLevel = field.formStatus === "errored" ? "error" : beforeError;
+
+  if (["error"].includes(maxLevel) && error?.level === "error") {
+    return (
+      <p {...props} className={cn("text-sm text-red-500", className)}>
+        {children ?? error.message}
+      </p>
+    );
+  }
+
+  if (["warn", "error"].includes(maxLevel) && error?.level === "warn") {
+    return (
+      <p {...props} className={cn("text-sm text-yellow-500", className)}>
+        {children ?? error.message}
+      </p>
+    );
+  }
+
   return (
-    <p {...props} className={cn("text-sm text-red-500", className)}>
-      {show === "errored" && field.formStatus === "errored" && error ? children ?? error : ""}
+    <p {...props} className={cn("text-sm text-slate-500", className)}>
+      {info}
     </p>
   );
 });
@@ -64,9 +86,19 @@ export const UnmountedErrors = memo(function UnmountedErrors<T extends FormLike<
   className,
   ...props
 }: Omit<React.InputHTMLAttributes<HTMLParagraphElement>, "form"> & { form: T }) {
-  return Object.entries(form.unmountedErrors()).map(([key, error]) => (
-    <p {...props} key={key} className={cn("text-sm text-red-500", className)}>
-      {error}
-    </p>
-  ));
+  return Object.entries(form.unmountedErrors())
+    .sort(([, a], [, b]) => (a?.level === "warn" && b?.level === "warn" ? 0 : a?.level === "warn" ? -1 : 1))
+    .map(([key, error]) => (
+      <p
+        {...props}
+        key={key}
+        className={cn(
+          "text-sm",
+          { "text-red-500": error?.level === "error", "text-yellow-500": error?.level === "warn" },
+          className
+        )}
+      >
+        {error?.message}
+      </p>
+    ));
 });
