@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Store } from "@tanstack/store";
 import { type SetStateAction, useCallback, useState, useMemo, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
 import { createContext, useContextSelector } from "use-context-selector";
 import { z } from "zod";
+import { useStore } from "@tanstack/react-store";
 
 /***   Utility Types   ***/
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -23,70 +25,95 @@ export type FieldLikeAny = FieldLike<any>;
 
 export function useFieldLike<T>(_defaultValue: T) {
   const [defaultValue, setDefaultValue] = useState(_defaultValue);
-  const [value, _setValue] = useState(defaultValue);
-  const [_error, _setError] = useState<{ message: string; level: "warn" | "error" }>();
+  const [store] = useState(
+    () =>
+      new Store<{
+        value: T;
+        error?: { message: string; level: "warn" | "error" };
+      }>({ value: defaultValue })
+  );
   const [_formError, setFormError] = useState<string>();
-  const validateRef = useRef<() => void>();
   const [formStatus, setFormStatus] = useState<"errored" | "valid" | "idle">("idle");
   const [isDirty, setDirty] = useState(false);
   const [isMounted, _setMounted] = useState(false);
+  const validateRef = useRef<() => void>();
 
   useEffect(() => {
     if (JSON.stringify(defaultValue) !== JSON.stringify(_defaultValue)) {
       setDefaultValue(_defaultValue);
       if (!isDirty) {
-        _setValue(_defaultValue);
+        store.setState((prev) => ({ ...prev, value: _defaultValue }));
       }
     }
-  }, [_defaultValue, defaultValue, isDirty]);
+  }, [_defaultValue, defaultValue, isDirty, store]);
 
-  const get = useCallback(() => value, [value]);
-  const error = useCallback(
-    () => (_formError ? { message: _formError, level: "error" as const } : _error),
-    [_error, _formError]
-  );
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const useValue = useCallback(() => useStore(store, (v) => v.value), [store]);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const useError = useCallback(() => useStore(store, (v) => v.error), [store]);
 
   const set = useCallback(
     (valueAction: SetStateAction<T>, options?: { noValidation?: boolean; keepIsDirtyFalse?: boolean }) => {
       if (options?.noValidation !== false && formStatus === "errored") {
         flushSync(() => {
-          _setValue(valueAction);
+          store.setState((prev) => {
+            return {
+              ...prev,
+              value: typeof valueAction === "function" ? (valueAction as (prev: T) => T)(prev.value) : valueAction,
+            };
+          });
         });
         validateRef.current?.();
       } else {
-        _setValue(valueAction);
+        store.setState((prev) => {
+          return {
+            ...prev,
+            value: typeof valueAction === "function" ? (valueAction as (prev: T) => T)(prev.value) : valueAction,
+          };
+        });
       }
       if (!options?.keepIsDirtyFalse) setDirty(true);
     },
-    [formStatus]
+    [formStatus, store]
   );
 
   const reset = useCallback(() => {
-    _setValue(defaultValue);
-    _setError(undefined);
+    store.setState(() => ({
+      value: defaultValue,
+    }));
     setFormError(undefined);
     setDirty(false);
-  }, [defaultValue]);
+  }, [defaultValue, store]);
 
-  const setError = useCallback((error: { message: string; level: "error" | "warn" } | string | undefined) => {
-    _setError(typeof error === "string" ? { message: error, level: "error" } : error);
-  }, []);
+  const setError = useCallback(
+    (error: { message: string; level: "error" | "warn" } | string | undefined) => {
+      store.setState((prev) => ({
+        ...prev,
+        error: typeof error === "string" ? { message: error, level: "error" } : error,
+      }));
+    },
+    [store]
+  );
 
-  const clearError = useCallback(() => _setError(undefined), []);
+  const clearError = useCallback(() => store.setState((prev) => ({ ...prev, error: undefined })), [store]);
   const mount = useCallback(() => _setMounted(true), []);
   const unmount = useCallback(() => _setMounted(false), []);
 
   const actions = useMemo(() => {
     return {
       __type__: "fieldlike" as const,
-      get,
+      useValue,
       set,
       reset,
-      error,
-      rawErrors: { field: _error, form: _formError ? { message: _formError, level: "error" as const } : undefined },
+      useError,
+      rawErrors: {
+        field: store.state.error,
+        form: _formError ? { message: _formError, level: "error" as const } : undefined,
+      },
       errorSource: _formError ? ("form" as const) : ("field" as const),
       setError,
       formStatus,
+      store,
       setFormStatus,
       setFormError,
       clearError,
@@ -97,11 +124,11 @@ export function useFieldLike<T>(_defaultValue: T) {
       validateRef,
     };
   }, [
-    get,
+    useValue,
     set,
     reset,
-    error,
-    _error,
+    useError,
+    store,
     _formError,
     setError,
     formStatus,
@@ -123,7 +150,7 @@ export type FormLikeValue<TForm extends object> = TForm extends FormLikeAny
       [K in keyof TForm]: FormLikeValue<TForm[K]>;
     }
   : TForm extends FieldLikeAny
-  ? ReturnType<TForm["get"]>
+  ? ReturnType<TForm["useValue"]>
   : never;
 
 export type FormLikeError<TForm extends object> = TForm extends FormLikeAny
@@ -131,7 +158,7 @@ export type FormLikeError<TForm extends object> = TForm extends FormLikeAny
       [K in keyof TForm]: FormLikeError<TForm[K]>;
     }
   : TForm extends FieldLikeAny
-  ? ReturnType<TForm["error"]>
+  ? ReturnType<TForm["useError"]>
   : never;
 
 export type FormLike<TForm extends FormLikeAny> = ReturnType<typeof useFormLike<TForm, z.ZodType>>;
@@ -145,21 +172,36 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
   const [formStatus, setFormStatus] = useState<"errored" | "valid" | "idle">("idle");
 
   const get = useCallback(() => {
-    return fieldsMap(options.form, (field) => field.get()) as FormLikeValue<TForm>;
+    return fieldsMap(options.form, (field) => field.useValue()) as FormLikeValue<TForm>;
+  }, [options.form]);
+
+  const getSnapshot = useCallback(() => {
+    return fieldsMap(options.form, (field) => field.store.state.value) as FormLikeValue<TForm>;
   }, [options.form]);
 
   const errors = useCallback(() => {
-    return fieldsMap(options.form, (field) => field.error()) as FormLikeError<TForm>;
+    return fieldsMap(options.form, (field) => field.useError()) as FormLikeError<TForm>;
   }, [options.form]);
 
   const unmountedErrors = useCallback(() => {
-    return fieldsMap(options.form, (field) => (field?.isMounted ? undefined : field?.error())) as FormLikeError<TForm>;
+    return fieldsMap(options.form, (field) =>
+      field?.isMounted ? undefined : field?.useError()
+    ) as FormLikeError<TForm>;
   }, [options.form]);
 
   const flatErrors = useCallback(() => {
     const errors = {} as Record<string, { level: "warn" | "error"; message: string }>;
     fieldsForEach(options.form, (field, path) => {
-      const error = field.error();
+      const error = field.useError();
+      if (error) errors[path.join(".")] = error;
+    });
+    return errors;
+  }, [options.form]);
+
+  const flatErrorsSnapshot = useCallback(() => {
+    const errors = {} as Record<string, { level: "warn" | "error"; message: string }>;
+    fieldsForEach(options.form, (field, path) => {
+      const error = field.store.state.error;
       if (error) errors[path.join(".")] = error;
     });
     return errors;
@@ -168,7 +210,7 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
   const flatUnmountedErrors = useCallback(() => {
     const errors = {} as Record<string, { level: "warn" | "error"; message: string }>;
     fieldsForEach(options.form, (field, path) => {
-      const error = field.error();
+      const error = field.useError();
       if (!field.isMounted && error) errors[path.join(".")] = error;
     });
     return errors;
@@ -207,10 +249,10 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
       try {
         const schema = options.schema;
         if (!schema) return false;
-        const value = get();
+        const value = getSnapshot();
         schema.parse(value);
         setFormErrors({} as never);
-        const areFieldErrors = Object.values(flatErrors()).filter(Boolean).length > 0;
+        const areFieldErrors = Object.values(flatErrorsSnapshot()).filter(Boolean).length > 0;
         if (areFieldErrors) throw new Error("Field errors");
         updateFormStatus("valid");
         props?.valid?.(value as z.infer<TSchema>);
@@ -223,12 +265,14 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
           ) as Record<string, string>;
           setFormErrors(errorsObj);
           props?.invalid?.(errorsObj);
+        } else {
+          console.error(error);
         }
         updateFormStatus("errored");
         return false;
       }
     },
-    [flatErrors, get, options.schema, setFormErrors, updateFormStatus]
+    [flatErrorsSnapshot, getSnapshot, options.schema, setFormErrors, updateFormStatus]
   );
 
   const submit = useCallback(
@@ -287,7 +331,7 @@ type Enougth<TForm, Schema> = Schema extends Record<string, unknown> // schema i
     ? true
     : false
   : TForm extends FieldLikeAny // schema is leaf?
-  ? Schema extends ReturnType<TForm["get"]> //  value is correct?
+  ? Schema extends ReturnType<TForm["useValue"]> //  value is correct?
     ? true
     : false
   : false;

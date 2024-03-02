@@ -2,12 +2,13 @@ import { type FormLikeAny, type FieldLikeAny, type FormLike } from "@/formlike/h
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { forwardRef, memo, type ForwardedRef, useEffect, type ReactNode } from "react";
+import { useStore } from "@tanstack/react-store";
 
 export type InputProps<T extends FieldLikeAny> = React.InputHTMLAttributes<HTMLInputElement> & {
   field: T;
   noValidation?: boolean;
   keepIsDirtyFalse?: boolean;
-  valueFormatter?: (value: string) => ReturnType<T["get"]>;
+  valueFormatter?: (value: string) => ReturnType<T["useValue"]>;
 };
 export const FieldInput = memo(
   forwardRef(
@@ -15,6 +16,8 @@ export const FieldInput = memo(
       { field, onChange, noValidation, valueFormatter, ...props }: InputProps<T>,
       ref: ForwardedRef<HTMLInputElement>
     ) => {
+      const value = useStore(field.store, (v) => v.value as never);
+
       useEffect(() => {
         field.mount();
         return () => field.unmount();
@@ -25,7 +28,7 @@ export const FieldInput = memo(
         onChange?.(e);
       }
 
-      return <Input ref={ref} value={(field.get() as never) ?? ""} {...props} onChange={handleChange} />;
+      return <Input ref={ref} value={value ?? ""} {...props} onChange={handleChange} />;
     }
   )
 );
@@ -43,7 +46,7 @@ export const FieldError = memo(function Error<T extends FieldLikeAny>({
   children?: React.ReactNode;
   info?: ReactNode;
 }) {
-  const error = field.error();
+  const error = useStore(field.store, (v) => v.error);
   const maxLevel = field.formStatus === "errored" ? "error" : beforeError;
 
   if (["error"].includes(maxLevel) && error?.level === "error") {

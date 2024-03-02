@@ -70,7 +70,7 @@ export default function Page() {
       <div className="grid grid-cols-2 flex-wrap items-start justify-start gap-4 p-4">
         <div className="row-span-2 space-y-4">
           <Field label="Titular Datos Generales">
-            <ViewJSON data={person.get()} />
+            {/* <VsiewJSON data={person.get()} /> */}
             <Button onClick={person.reset}>Reset</Button>
           </Field>
           <Field label="Enviar">
@@ -78,7 +78,7 @@ export default function Page() {
           </Field>
           <Field label="Errors">
             <ViewJSON data={person.formStatus} />
-            <ViewJSON data={person.errors()} />
+            {/* <ViewJSON data={person.errors()} /> */}
           </Field>
           <Field label="Unmounted Errors">
             <UnmountedErrors form={person} />
@@ -97,7 +97,7 @@ export default function Page() {
           <Field label="Documento">
             <div className="flex">
               <Select
-                value={person.form.general.identity.type.get()}
+                value={person.form.general.identity.type.useValue()}
                 onValueChange={(val) => person.form.general.identity.type.set(val)}
               >
                 <SelectTrigger>
@@ -116,7 +116,7 @@ export default function Page() {
           <Field label="Documento Legal">
             <div className="flex">
               <Select
-                value={person.form.general.legalIdentity.type.get()}
+                value={person.form.general.legalIdentity.type.useValue()}
                 onValueChange={(val) => person.form.general.legalIdentity.type.set(val)}
               >
                 <SelectTrigger>
@@ -142,7 +142,7 @@ export default function Page() {
           </Field>
           <Field label="Nacionalidad">
             <Select
-              value={person.form.general.nationality.get()}
+              value={person.form.general.nationality.useValue()}
               onValueChange={(val) => person.form.general.nationality.set(val)}
             >
               <SelectTrigger>
@@ -159,14 +159,14 @@ export default function Page() {
             <FieldInput
               type="date"
               field={person.form.general.birthday}
-              value={person.form.general.birthday.get()?.toISOString()?.split("T")[0]}
+              value={person.form.general.birthday.useValue()?.toISOString()?.split("T")[0]}
               valueFormatter={(val) => new Date(val)}
             />
             <FieldError field={person.form.general.birthday} />
           </Field>
           <Field label="Lugar Nacimiento">
             <Select
-              value={person.form.general.birthplace.get()}
+              value={person.form.general.birthplace.useValue()}
               onValueChange={(val) => person.form.general.birthplace.set(val)}
             >
               <SelectTrigger>
@@ -180,7 +180,10 @@ export default function Page() {
             <FieldError field={person.form.general.birthplace} />
           </Field>
           <Field label="Genero">
-            <Select value={person.form.general.genre.get()} onValueChange={(val) => person.form.general.genre.set(val)}>
+            <Select
+              value={person.form.general.genre.useValue()}
+              onValueChange={(val) => person.form.general.genre.set(val)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -195,7 +198,7 @@ export default function Page() {
           </Field>
           <Field label="Estado civil">
             <Select
-              value={person.form.general.civilStatus.get()}
+              value={person.form.general.civilStatus.useValue()}
               onValueChange={(val) => person.form.general.civilStatus.set(val)}
             >
               <SelectTrigger>
