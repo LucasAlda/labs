@@ -6,26 +6,58 @@ import { z } from "zod";
 
 const personSchema = z.object({
   general: z.object({
-    email: z.string().email(),
-    phone: z.string(),
-    identity: z.object({
-      type: z.enum(["dni", "passport"]),
-      number: z.number(),
+    email: z
+      .string({ required_error: "El email es obligatorio", invalid_type_error: "El email debe ser un texto" })
+      .email({ message: "El email no es valido" }),
+    phone: z.string({
+      required_error: "El telefono es obligatorio",
+      invalid_type_error: "El telefono debe ser un texto",
     }),
-    legalIdentity: z.object({
-      type: z.enum(["dni", "passport"]),
+    identity: z.object({
+      type: z.enum(["dni", "passport"], {
+        required_error: "El tipo de documento es obligatorio",
+        invalid_type_error: "El tipo de documento debe ser un DNI o pasaporte",
+      }),
       number: z.number({
-        invalid_type_error: "El numero de documento legal debe ser un numero",
-        required_error: "El numero de documento legal es obligatorio",
+        required_error: "El numero de documento es obligatorio",
+        invalid_type_error: "El numero de documento debe ser un numero",
       }),
     }),
-    name: z.string(),
-    lastName: z.string(),
-    nationality: z.string(),
-    birthplace: z.string(),
-    birthday: z.date(),
-    genre: z.enum(["F", "M", "X", "N"]),
-    civilStatus: z.enum(["single", "married", "divorced", "widowed", "separated", "other"]),
+    legalIdentity: z.object({
+      type: z.enum(["dni", "passport"], {
+        required_error: "El tipo de documento legal es obligatorio",
+        invalid_type_error: "El tipo de documento legal debe ser un DNI o pasaporte",
+      }),
+      number: z.number({
+        required_error: "El numero de documento legal es obligatorio",
+        invalid_type_error: "El numero de documento legal debe ser un numero",
+      }),
+    }),
+    name: z.string({ required_error: "El nombre es obligatorio", invalid_type_error: "El nombre debe ser un texto" }),
+    lastName: z.string({
+      required_error: "El apellido es obligatorio",
+      invalid_type_error: "El apellido debe ser un texto",
+    }),
+    nationality: z.string({
+      required_error: "La nacionalidad es obligatoria",
+      invalid_type_error: "La nacionalidad debe ser un texto",
+    }),
+    birthplace: z.string({
+      required_error: "El lugar de nacimiento es obligatorio",
+      invalid_type_error: "El lugar de nacimiento debe ser un texto",
+    }),
+    birthday: z.date({
+      required_error: "La fecha de nacimiento es obligatoria",
+      invalid_type_error: "La fecha de nacimiento debe ser una fecha",
+    }),
+    genre: z.enum(["F", "M", "X", "N"], {
+      required_error: "El genero es obligatorio",
+      invalid_type_error: "El genero debe ser F, M, X o N",
+    }),
+    civilStatus: z.enum(["single", "married", "divorced", "widowed", "separated", "other"], {
+      required_error: "El estado civil es obligatorio",
+      invalid_type_error: "El estado civil debe ser soltero, casado, divorciado, viudo, separado u otro",
+    }),
   }),
 });
 
