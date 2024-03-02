@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldError, FieldInput, UnmountedErrors } from "@/formlike/components";
 import { enougth, useFieldLike, useFormLike } from "@/formlike/hooks";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { z } from "zod";
 
 const personSchema = z.object({
@@ -28,6 +28,7 @@ const personSchema = z.object({
     civilStatus: z.enum(["single", "married", "divorced", "widowed", "separated", "other"]),
   }),
 });
+const context = createContext<ReturnType<typeof useFormLike>>(null!);
 
 export default function Page() {
   const [initial, setInitial] = useState<{ name?: string }>({});
@@ -66,158 +67,170 @@ export default function Page() {
   });
 
   return (
-    <div className="h-screen bg-slate-100">
-      <div className="grid grid-cols-2 flex-wrap items-start justify-start gap-4 p-4">
-        <div className="row-span-2 space-y-4">
-          <Field label="Titular Datos Generales">
-            {/* <VsiewJSON data={person.get()} /> */}
-            <Button onClick={person.reset}>Reset</Button>
-          </Field>
-          <Field label="Enviar">
-            <Button onClick={() => person.submit()}>Submit</Button>
-          </Field>
-          <Field label="Errors">
-            <ViewJSON data={person.formStatus} />
-            {/* <ViewJSON data={person.errors()} /> */}
-          </Field>
-          <Field label="Unmounted Errors">
-            <UnmountedErrors form={person} />
-          </Field>
-        </div>
-        <div className="space-y-2">
-          <Field label="Email">
-            <FieldInput type="email" field={person.form.general.email} />
-            <FieldError field={person.form.general.email} />
-          </Field>
-          <Field label="Phone">
-            <FieldInput field={person.form.general.phone} />
-            <FieldError field={person.form.general.phone} />
-          </Field>
+    <context.Provider value={person}>
+      <div className="h-screen bg-slate-100">
+        <div className="grid grid-cols-2 flex-wrap items-start justify-start gap-4 p-4">
+          <div className="row-span-2 space-y-4">
+            <Field label="Titular Datos Generales">
+              <ViewValues />
+              {/* <ViewJSON data={person.get()} /> */}
+              <Button onClick={person.reset}>Reset</Button>
+            </Field>
+            <Field label="Enviar">
+              <Button onClick={() => person.submit()}>Submit</Button>
+            </Field>
+            <Field label="Errors">
+              <ViewJSON data={person.formStatus} />
+              {/* <ViewJSON data={person.errors()} /> */}
+            </Field>
+            <Field label="Unmounted Errors">
+              <UnmountedErrors form={person} />
+            </Field>
+          </div>
+          <div className="space-y-2">
+            <Field label="Email">
+              <FieldInput type="email" field={person.form.general.email} />
+              <FieldError field={person.form.general.email} />
+            </Field>
+            <Field label="Phone">
+              <FieldInput field={person.form.general.phone} />
+              <FieldError field={person.form.general.phone} />
+            </Field>
 
-          <Field label="Documento">
-            <div className="flex">
+            <Field label="Documento">
+              <div className="flex">
+                <Select
+                  value={person.form.general.identity.type.useValue()}
+                  onValueChange={(val) => person.form.general.identity.type.set(val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dni">DNI</SelectItem>
+                    <SelectItem value="passport">Pasaporte</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldInput field={person.form.general.identity.number} valueFormatter={Number} />
+              </div>
+              <FieldError field={person.form.general.identity.type} />
+              <FieldError field={person.form.general.identity.number} />
+            </Field>
+            <Field label="Documento Legal">
+              <div className="flex">
+                <Select
+                  value={person.form.general.legalIdentity.type.useValue()}
+                  onValueChange={(val) => person.form.general.legalIdentity.type.set(val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dni">DNI</SelectItem>
+                    <SelectItem value="passport">Pasaporte</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldInput field={person.form.general.legalIdentity.number} valueFormatter={Number} />
+              </div>
+              <FieldError field={person.form.general.legalIdentity.type} />
+              <FieldError field={person.form.general.legalIdentity.number} />
+            </Field>
+            <Field label="Nombre">
+              <div className="flex">
+                <FieldInput field={person.form.general.name} />
+                <FieldInput field={person.form.general.lastName} />
+              </div>
+              <FieldError field={person.form.general.name} />
+              <FieldError field={person.form.general.lastName} />
+            </Field>
+            <Field label="Nacionalidad">
               <Select
-                value={person.form.general.identity.type.useValue()}
-                onValueChange={(val) => person.form.general.identity.type.set(val)}
+                value={person.form.general.nationality.useValue()}
+                onValueChange={(val) => person.form.general.nationality.set(val)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dni">DNI</SelectItem>
-                  <SelectItem value="passport">Pasaporte</SelectItem>
+                  <SelectItem value="Argentina">Argentina</SelectItem>
+                  <SelectItem value="Mexico">Uno de mierda</SelectItem>
                 </SelectContent>
               </Select>
-              <FieldInput field={person.form.general.identity.number} valueFormatter={Number} />
-            </div>
-            <FieldError field={person.form.general.identity.type} />
-            <FieldError field={person.form.general.identity.number} />
-          </Field>
-          <Field label="Documento Legal">
-            <div className="flex">
+              <FieldError field={person.form.general.nationality} />
+            </Field>
+            <Field label="Nacimiento">
+              <FieldInput
+                type="date"
+                field={person.form.general.birthday}
+                value={person.form.general.birthday.useValue()?.toISOString()?.split("T")[0]}
+                valueFormatter={(val) => new Date(val)}
+              />
+              <FieldError field={person.form.general.birthday} />
+            </Field>
+            <Field label="Lugar Nacimiento">
               <Select
-                value={person.form.general.legalIdentity.type.useValue()}
-                onValueChange={(val) => person.form.general.legalIdentity.type.set(val)}
+                value={person.form.general.birthplace.useValue()}
+                onValueChange={(val) => person.form.general.birthplace.set(val)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dni">DNI</SelectItem>
-                  <SelectItem value="passport">Pasaporte</SelectItem>
+                  <SelectItem value="Argentina">Argentina</SelectItem>
+                  <SelectItem value="Mexico">Uno de mierda</SelectItem>
                 </SelectContent>
               </Select>
-              <FieldInput field={person.form.general.legalIdentity.number} valueFormatter={Number} />
-            </div>
-            <FieldError field={person.form.general.legalIdentity.type} />
-            <FieldError field={person.form.general.legalIdentity.number} />
-          </Field>
-          <Field label="Nombre">
-            <div className="flex">
-              <FieldInput field={person.form.general.name} />
-              <FieldInput field={person.form.general.lastName} />
-            </div>
-            <FieldError field={person.form.general.name} />
-            <FieldError field={person.form.general.lastName} />
-          </Field>
-          <Field label="Nacionalidad">
-            <Select
-              value={person.form.general.nationality.useValue()}
-              onValueChange={(val) => person.form.general.nationality.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argentina">Argentina</SelectItem>
-                <SelectItem value="Mexico">Uno de mierda</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.nationality} />
-          </Field>
-          <Field label="Nacimiento">
-            <FieldInput
-              type="date"
-              field={person.form.general.birthday}
-              value={person.form.general.birthday.useValue()?.toISOString()?.split("T")[0]}
-              valueFormatter={(val) => new Date(val)}
-            />
-            <FieldError field={person.form.general.birthday} />
-          </Field>
-          <Field label="Lugar Nacimiento">
-            <Select
-              value={person.form.general.birthplace.useValue()}
-              onValueChange={(val) => person.form.general.birthplace.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argentina">Argentina</SelectItem>
-                <SelectItem value="Mexico">Uno de mierda</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.birthplace} />
-          </Field>
-          <Field label="Genero">
-            <Select
-              value={person.form.general.genre.useValue()}
-              onValueChange={(val) => person.form.general.genre.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="F">Femenino</SelectItem>
-                <SelectItem value="X">No binario</SelectItem>
-                <SelectItem value="O">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.genre} />
-          </Field>
-          <Field label="Estado civil">
-            <Select
-              value={person.form.general.civilStatus.useValue()}
-              onValueChange={(val) => person.form.general.civilStatus.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Soltero</SelectItem>
-                <SelectItem value="married">Casado</SelectItem>
-                <SelectItem value="divorced">Divorciado</SelectItem>
-                <SelectItem value="widowed">Viudo</SelectItem>
-                <SelectItem value="separated">Separado</SelectItem>
-                <SelectItem value="other">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.civilStatus} />
-          </Field>
+              <FieldError field={person.form.general.birthplace} />
+            </Field>
+            <Field label="Genero">
+              <Select
+                value={person.form.general.genre.useValue()}
+                onValueChange={(val) => person.form.general.genre.set(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="M">Masculino</SelectItem>
+                  <SelectItem value="F">Femenino</SelectItem>
+                  <SelectItem value="X">No binario</SelectItem>
+                  <SelectItem value="O">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldError field={person.form.general.genre} />
+            </Field>
+            <Field label="Estado civil">
+              <Select
+                value={person.form.general.civilStatus.useValue()}
+                onValueChange={(val) => person.form.general.civilStatus.set(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Soltero</SelectItem>
+                  <SelectItem value="married">Casado</SelectItem>
+                  <SelectItem value="divorced">Divorciado</SelectItem>
+                  <SelectItem value="widowed">Viudo</SelectItem>
+                  <SelectItem value="separated">Separado</SelectItem>
+                  <SelectItem value="other">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldError field={person.form.general.civilStatus} />
+            </Field>
+          </div>
         </div>
       </div>
-    </div>
+    </context.Provider>
+  );
+}
+
+function ViewValues() {
+  const form = useContext(context);
+  return (
+    <pre>
+      <code>{JSON.stringify(form.get(), null, 2)}</code>
+    </pre>
   );
 }
 

@@ -99,47 +99,31 @@ export function useFieldLike<T>(_defaultValue: T) {
   const mount = useCallback(() => _setMounted(true), []);
   const unmount = useCallback(() => _setMounted(false), []);
 
-  const actions = useMemo(() => {
-    return {
-      __type__: "fieldlike" as const,
-      useValue,
-      set,
-      reset,
-      useError,
-      rawErrors: {
-        field: store.state.error,
-        form: _formError ? { message: _formError, level: "error" as const } : undefined,
-      },
-      errorSource: _formError ? ("form" as const) : ("field" as const),
-      setError,
-      formStatus,
-      store,
-      setFormStatus,
-      setFormError,
-      clearError,
-      isDirty,
-      isMounted,
-      mount,
-      unmount,
-      validateRef,
-    };
-  }, [
+  const rawErrors = useMemo(
+    () => ({ field: store.state.error, form: _formError ? { message: _formError, level: "error" } : undefined }),
+    [_formError, store.state.error]
+  );
+
+  return {
+    __type__: "fieldlike" as const,
     useValue,
     set,
     reset,
     useError,
-    store,
-    _formError,
+    rawErrors,
+    errorSource: _formError ? ("form" as const) : ("field" as const),
     setError,
     formStatus,
+    store,
+    setFormStatus,
+    setFormError,
     clearError,
     isDirty,
     isMounted,
     mount,
     unmount,
-  ]);
-
-  return actions;
+    validateRef,
+  };
 }
 
 /***    Formlike     ***/

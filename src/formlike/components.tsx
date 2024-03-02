@@ -18,6 +18,8 @@ export const FieldInput = memo(
     ) => {
       const value = useStore(field.store, (v) => v.value as never);
 
+      console.log("FieldInput");
+
       useEffect(() => {
         field.mount();
         return () => field.unmount();
