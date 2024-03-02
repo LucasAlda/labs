@@ -2,6 +2,7 @@ import { type FormLikeAny, type FieldLikeAny, type FormLike } from "@/formlike/h
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { forwardRef, memo, type ForwardedRef, useEffect, type ReactNode } from "react";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type InputProps<T extends FieldLikeAny> = React.InputHTMLAttributes<HTMLInputElement> & {
   field: T;
@@ -29,6 +30,48 @@ export const FieldInput = memo(
     }
   )
 );
+
+export type SelectProps<T extends FieldLikeAny> = Omit<
+  React.SelectHTMLAttributes<HTMLSelectElement>,
+  "value" | "defaultValue" | "dir"
+> & {
+  field: T;
+  noValidation?: boolean;
+  keepIsDirtyFalse?: boolean;
+  valueFormatter?: (value: string) => ReturnType<T["get"]>;
+  value?: string;
+  defaultValue?: string;
+  onChange?: (value: ReturnType<T["get"]> | string) => void;
+};
+export const FieldSelectInput = memo(function FieldSelectInput<T extends FieldLikeAny>({
+  field,
+  onChange,
+  noValidation,
+  children,
+  className,
+  valueFormatter,
+  ...props
+}: SelectProps<T>) {
+  useEffect(() => {
+    field.mount();
+    return () => field.unmount();
+  }, [field]);
+
+  function handleChange(value: string) {
+    const parsedValue = valueFormatter ? valueFormatter(value) : value;
+    field.set(parsedValue, { noValidation });
+    onChange?.(parsedValue);
+  }
+
+  return (
+    <Select value={(field.get() as string | undefined) ?? ""} {...props} onValueChange={handleChange}>
+      <SelectTrigger className={className}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>{children}</SelectContent>
+    </Select>
+  );
+});
 
 export const FieldError = memo(function Error<T extends FieldLikeAny>({
   field,

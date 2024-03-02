@@ -1,6 +1,6 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FieldError, FieldInput, UnmountedErrors } from "@/formlike/components";
-import { enougth, useFieldLike, useFormLike } from "@/formlike/hooks";
+import { SelectItem } from "@/components/ui/select";
+import { FieldError, FieldInput, FieldSelectInput, UnmountedErrors } from "@/formlike/components";
+import { type FieldLikeAny, enougth, useFieldLike, useFormLike } from "@/formlike/hooks";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 
@@ -101,149 +101,90 @@ export default function Page() {
     <div className="h-screen bg-slate-100">
       <div className="grid grid-cols-2 flex-wrap items-start justify-start gap-4 p-4">
         <div className="row-span-2 space-y-4">
-          <Field label="Titular Datos Generales">
+          <Card label="Titular Datos Generales">
             <ViewJSON data={person.get()} />
             <Button onClick={person.reset}>Reset</Button>
-          </Field>
-          <Field label="Enviar">
+          </Card>
+          <Card label="Enviar">
             <Button onClick={() => person.submit()}>Submit</Button>
-          </Field>
-          <Field label="Errors">
+          </Card>
+          <Card label="Errors">
             <ViewJSON data={person.formStatus} />
             <ViewJSON data={person.errors()} />
-          </Field>
-          <Field label="Unmounted Errors">
+          </Card>
+          <Card label="Unmounted Errors">
             <UnmountedErrors form={person} />
-          </Field>
+          </Card>
         </div>
         <div className="space-y-2">
-          <Field label="Email">
-            <FieldInput type="email" field={person.form.general.email} />
-            <FieldError field={person.form.general.email} />
-          </Field>
-          <Field label="Phone">
-            <FieldInput field={person.form.general.phone} />
-            <FieldError field={person.form.general.phone} />
-          </Field>
+          <Field label="Email" field={person.form.general.email} />
+          <Field label="Phone" field={person.form.general.phone} />
 
-          <Field label="Documento">
+          <Card label="Documento">
             <div className="flex">
-              <Select
-                value={person.form.general.identity.type.get()}
-                onValueChange={(val) => person.form.general.identity.type.set(val)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dni">DNI</SelectItem>
-                  <SelectItem value="passport">Pasaporte</SelectItem>
-                </SelectContent>
-              </Select>
+              <FieldSelectInput field={person.form.general.identity.type}>
+                <SelectItem value="dni">DNI</SelectItem>
+                <SelectItem value="passport">Pasaporte</SelectItem>
+              </FieldSelectInput>
               <FieldInput field={person.form.general.identity.number} valueFormatter={Number} />
             </div>
             <FieldError field={person.form.general.identity.type} />
             <FieldError field={person.form.general.identity.number} />
-          </Field>
-          <Field label="Documento Legal">
+          </Card>
+
+          <Card label="Documento Legal">
             <div className="flex">
-              <Select
-                value={person.form.general.legalIdentity.type.get()}
-                onValueChange={(val) => person.form.general.legalIdentity.type.set(val)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dni">DNI</SelectItem>
-                  <SelectItem value="passport">Pasaporte</SelectItem>
-                </SelectContent>
-              </Select>
+              <FieldSelectInput field={person.form.general.legalIdentity.type}>
+                <SelectItem value="dni">DNI</SelectItem>
+                <SelectItem value="passport">Pasaporte</SelectItem>
+              </FieldSelectInput>
               <FieldInput field={person.form.general.legalIdentity.number} valueFormatter={Number} />
             </div>
             <FieldError field={person.form.general.legalIdentity.type} />
             <FieldError field={person.form.general.legalIdentity.number} />
-          </Field>
-          <Field label="Nombre">
+          </Card>
+
+          <Card label="Nombre">
             <div className="flex">
               <FieldInput field={person.form.general.name} />
               <FieldInput field={person.form.general.lastName} />
             </div>
             <FieldError field={person.form.general.name} />
             <FieldError field={person.form.general.lastName} />
-          </Field>
-          <Field label="Nacionalidad">
-            <Select
-              value={person.form.general.nationality.get()}
-              onValueChange={(val) => person.form.general.nationality.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argentina">Argentina</SelectItem>
-                <SelectItem value="Mexico">Uno de mierda</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.nationality} />
-          </Field>
-          <Field label="Nacimiento">
-            <FieldInput
-              type="date"
-              field={person.form.general.birthday}
-              value={person.form.general.birthday.get()?.toISOString()?.split("T")[0]}
-              valueFormatter={(val) => new Date(val)}
-            />
-            <FieldError field={person.form.general.birthday} />
-          </Field>
-          <Field label="Lugar Nacimiento">
-            <Select
-              value={person.form.general.birthplace.get()}
-              onValueChange={(val) => person.form.general.birthplace.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argentina">Argentina</SelectItem>
-                <SelectItem value="Mexico">Uno de mierda</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.birthplace} />
-          </Field>
-          <Field label="Genero">
-            <Select value={person.form.general.genre.get()} onValueChange={(val) => person.form.general.genre.set(val)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="F">Femenino</SelectItem>
-                <SelectItem value="X">No binario</SelectItem>
-                <SelectItem value="O">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.genre} />
-          </Field>
-          <Field label="Estado civil">
-            <Select
-              value={person.form.general.civilStatus.get()}
-              onValueChange={(val) => person.form.general.civilStatus.set(val)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Soltero</SelectItem>
-                <SelectItem value="married">Casado</SelectItem>
-                <SelectItem value="divorced">Divorciado</SelectItem>
-                <SelectItem value="widowed">Viudo</SelectItem>
-                <SelectItem value="separated">Separado</SelectItem>
-                <SelectItem value="other">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field={person.form.general.civilStatus} />
-          </Field>
+          </Card>
+          <FieldSelect label="Nacionalidad" field={person.form.general.nationality}>
+            <SelectItem value="argentina">Argentina</SelectItem>
+            <SelectItem value="mexico">Mexico</SelectItem>
+          </FieldSelect>
+
+          <Field
+            label="Nacimiento"
+            type="date"
+            field={person.form.general.birthday}
+            value={person.form.general.birthday.get()?.toISOString()?.split("T")[0]}
+            valueFormatter={(val) => new Date(val)}
+          />
+
+          <FieldSelect label="Lugar Nacimiento" field={person.form.general.birthplace}>
+            <SelectItem value="argentina">Argentina</SelectItem>
+            <SelectItem value="mexico">Mexico</SelectItem>
+          </FieldSelect>
+
+          <FieldSelect label="Genero" field={person.form.general.genre}>
+            <SelectItem value="M">Masculino</SelectItem>
+            <SelectItem value="F">Femenino</SelectItem>
+            <SelectItem value="X">No binario</SelectItem>
+            <SelectItem value="N">Otro</SelectItem>
+          </FieldSelect>
+
+          <FieldSelect label="Estado civil" field={person.form.general.civilStatus}>
+            <SelectItem value="single">Soltero</SelectItem>
+            <SelectItem value="married">Casado</SelectItem>
+            <SelectItem value="divorced">Divorciado</SelectItem>
+            <SelectItem value="widowed">Viudo</SelectItem>
+            <SelectItem value="separated">Separado</SelectItem>
+            <SelectItem value="other">Otro</SelectItem>
+          </FieldSelect>
         </div>
       </div>
     </div>
@@ -258,20 +199,68 @@ function ViewJSON({ data }: { data?: unknown }) {
   );
 }
 
-function Field({
+function Card({
   label: title,
-  children,
   className = "",
+  children,
 }: {
   label: string;
-  children?: React.ReactNode;
   className?: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className={"rounded-md bg-white p-4 shadow" + " " + className}>
       <h1 className="font-semibold text-slate-800">{title}</h1>
       {children}
     </div>
+  );
+}
+
+function Field<T extends FieldLikeAny>({
+  field,
+  info,
+  label: title,
+  value,
+  type,
+  className = "",
+  valueFormatter,
+}: {
+  label: string;
+  info?: string;
+  className?: string;
+  type?: string;
+  field: T;
+  value?: string;
+  valueFormatter?: (value: string) => ReturnType<T["get"]>;
+}) {
+  return (
+    <Card label={title} className={className}>
+      <FieldInput field={field} type={type} value={value} valueFormatter={valueFormatter} />
+      <FieldError field={field} info={info} />
+    </Card>
+  );
+}
+
+function FieldSelect<T extends FieldLikeAny>({
+  field,
+  info,
+  label: title,
+  className = "",
+  children,
+}: {
+  label: string;
+  info?: string;
+  className?: string;
+  field: T;
+  value?: string;
+  valueFormatter?: (value: string) => ReturnType<T["get"]>;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card label={title} className={className}>
+      <FieldSelectInput field={field}>{children}</FieldSelectInput>
+      <FieldError field={field} info={info} />
+    </Card>
   );
 }
 
