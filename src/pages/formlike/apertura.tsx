@@ -4,25 +4,6 @@ import { enougth, useFieldLike, useFormLike } from "@/formlike/hooks";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 
-// const schema = z.object({
-//   name: z.string({ required_error: "El nombre es obligatorio", invalid_type_error: "El nombre debe ser un texto" }),
-//   age: z.number({ required_error: "La edad es obligatoria", invalid_type_error: "La edad debe ser un numero" }),
-//   phone: z
-//     .string({
-//       required_error: "El telefono es obligatorio",
-//       invalid_type_error: "El telefono debe ser en formato texto",
-//     })
-//     .min(8, { message: "El telefono es demasiado corto" })
-//     .max(12, { message: "El telefono es demasiado largo" }),
-//   extras: z.object({
-//     email: z.string({ required_error: "El email es obligatorio", invalid_type_error: "El email debe ser un texto" }),
-//     address: z.string({
-//       required_error: "La direccion es obligatoria",
-//       invalid_type_error: "La direccion debe ser un texto",
-//     }),
-//   }),
-// });
-
 const personSchema = z.object({
   general: z.object({
     email: z.string().email(),
