@@ -25,7 +25,7 @@ export const FieldInput = memo(
         onChange?.(e);
       }
 
-      return <Input {...props} ref={ref} onChange={handleChange} value={(field.get() as never) ?? ""} />;
+      return <Input ref={ref} value={(field.get() as never) ?? ""} {...props} onChange={handleChange} />;
     }
   )
 );
@@ -86,7 +86,7 @@ export const UnmountedErrors = memo(function UnmountedErrors<T extends FormLike<
   className,
   ...props
 }: Omit<React.InputHTMLAttributes<HTMLParagraphElement>, "form"> & { form: T }) {
-  return Object.entries(form.unmountedErrors())
+  return Object.entries(form.flatUnmountedErrors())
     .sort(([, a], [, b]) => (a?.level === "warn" && b?.level === "warn" ? 0 : a?.level === "warn" ? -1 : 1))
     .map(([key, error]) => (
       <p

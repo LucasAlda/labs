@@ -68,6 +68,7 @@ const MainMenu = ({ setShow }: { setShow: (show: boolean) => void }) => {
       </Menu.Dropdown>
       <Menu.Dropdown path="/formlike" label="Formlike">
         <Menu.Option path="/no-context">Sin Context</Menu.Option>
+        <Menu.Option path="/apertura">Apertura</Menu.Option>
       </Menu.Dropdown>
     </Menu>
   );
