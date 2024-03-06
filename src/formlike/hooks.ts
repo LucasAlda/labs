@@ -29,7 +29,7 @@ export function useFieldLike<T>(_defaultValue: T) {
   const validateRef = useRef<() => void>();
   const [formStatus, setFormStatus] = useState<"errored" | "valid" | "idle">("idle");
   const [isDirty, setDirty] = useState(false);
-  const [isMounted, _setMounted] = useState(false);
+  const [isErrorMounted, _setErrorMounted] = useState(false);
 
   useEffect(() => {
     if (JSON.stringify(defaultValue) !== JSON.stringify(_defaultValue)) {
@@ -73,8 +73,8 @@ export function useFieldLike<T>(_defaultValue: T) {
   }, []);
 
   const clearError = useCallback(() => _setError(undefined), []);
-  const mount = useCallback(() => _setMounted(true), []);
-  const unmount = useCallback(() => _setMounted(false), []);
+  const mountError = useCallback(() => _setErrorMounted(true), []);
+  const unmountError = useCallback(() => _setErrorMounted(false), []);
 
   const actions = useMemo(() => {
     return {
@@ -91,9 +91,9 @@ export function useFieldLike<T>(_defaultValue: T) {
       setFormError,
       clearError,
       isDirty,
-      isMounted,
-      mount,
-      unmount,
+      isMounted: isErrorMounted,
+      mountError,
+      unmountError,
       validateRef,
     };
   }, [
@@ -107,9 +107,9 @@ export function useFieldLike<T>(_defaultValue: T) {
     formStatus,
     clearError,
     isDirty,
-    isMounted,
-    mount,
-    unmount,
+    isErrorMounted,
+    mountError,
+    unmountError,
   ]);
 
   return actions;
