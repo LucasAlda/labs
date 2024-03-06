@@ -1,4 +1,4 @@
-import { FieldError, FieldInfo, FieldInput, UnmountedErrors } from "@/formlike/components";
+import { ErrorLike, InfoLike, InputLike, UnmountedErrorsLike } from "@/formlike/components";
 import { useFieldLike, useFormLike } from "@/formlike/hooks";
 import { z } from "zod";
 
@@ -39,21 +39,21 @@ export default function Page() {
             <ViewJSON data={contact.errors()} />
           </Field>
           <Field label="Unmounted Errors">
-            <UnmountedErrors form={contact} />
+            <UnmountedErrorsLike form={contact} />
           </Field>
         </div>
         <Field label="Name">
-          <FieldInput field={contact.form.name} />
-          <FieldError field={contact.form.name}>Flaco no sabes tu nombre?</FieldError>
-          <FieldInfo field={contact.form.name} />
+          <InputLike field={contact.form.name} />
+          <ErrorLike field={contact.form.name}>Flaco no sabes tu nombre?</ErrorLike>
+          <InfoLike field={contact.form.name} />
         </Field>
         <Field label="Age">
-          <FieldInput field={contact.form.age} valueFormatter={(val) => Number(val)} />
-          <FieldError field={contact.form.age} />
-          <FieldInfo field={contact.form.age} />
+          <InputLike field={contact.form.age} setAs={(val) => Number(val)} />
+          <ErrorLike field={contact.form.age} />
+          <InfoLike field={contact.form.age} />
         </Field>
         <Field label="Phone">
-          <FieldInput
+          <InputLike
             field={contact.form.phone}
             onChange={(e) => {
               e.target.value.length > 10
@@ -63,8 +63,8 @@ export default function Page() {
                 : contact.form.phone.setError(undefined);
             }}
           />
-          <FieldError field={contact.form.phone} beforeError="info" info="Debe ser XXXXXXXX sin guiones" />
-          <FieldInfo field={contact.form.phone} />
+          <ErrorLike field={contact.form.phone} beforeError="info" info="Debe ser XXXXXXXX sin guiones" />
+          <InfoLike field={contact.form.phone} />
         </Field>
         <Field label="Validate">
           <Button onClick={() => contact.submit()}>Validar</Button>
