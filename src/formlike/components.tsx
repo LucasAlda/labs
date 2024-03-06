@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { forwardRef, memo, type ForwardedRef, useEffect, type ReactNode } from "react";
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export interface InputProps<T extends FieldLikeAny> extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputLike<T extends FieldLikeAny> extends React.InputHTMLAttributes<HTMLInputElement> {
   field: T;
   noValidation?: boolean;
   keepIsDirtyFalse?: boolean;
@@ -12,10 +12,10 @@ export interface InputProps<T extends FieldLikeAny> extends React.InputHTMLAttri
   setAs?: (value: string) => ReturnType<T["get"]>;
 }
 
-export const FieldInput = memo(
+export const InputLike = memo(
   forwardRef(
     <T extends FieldLikeAny>(
-      { field, onChange, noValidation, valueAs, setAs, ...props }: InputProps<T>,
+      { field, onChange, noValidation, valueAs, setAs, ...props }: InputLike<T>,
       ref: ForwardedRef<HTMLInputElement>
     ) => {
       function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -30,7 +30,7 @@ export const FieldInput = memo(
   )
 );
 
-export interface SelectProps<T extends FieldLikeAny>
+export interface SelectLike<T extends FieldLikeAny>
   extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "defaultValue" | "dir" | "onChange"> {
   field: T;
   noValidation?: boolean;
@@ -40,7 +40,8 @@ export interface SelectProps<T extends FieldLikeAny>
   defaultValue?: string;
   onChange?: (value: ReturnType<T["get"]> | string) => void;
 }
-export const FieldSelectInput = memo(function FieldSelectInput<T extends FieldLikeAny>({
+
+export const SelectLike = memo(function SelectLike<T extends FieldLikeAny>({
   field,
   onChange,
   noValidation,
@@ -49,17 +50,20 @@ export const FieldSelectInput = memo(function FieldSelectInput<T extends FieldLi
   valueAs,
   setAs,
   ...props
-}: SelectProps<T>) {
+}: SelectLike<T>) {
   function handleChange(value: string) {
     const parsedValue = setAs ? setAs(value) : value;
     field.set(parsedValue, { noValidation });
     onChange?.(parsedValue);
   }
 
-  const value = typeof valueAs === "function" ? valueAs(field.get() as never) : (field.get() as never);
+  const value =
+    typeof valueAs === "function"
+      ? valueAs(field.get() as never)
+      : (field.get() as never as string | number | undefined);
 
   return (
-    <Select {...props} value={value ?? ""} onValueChange={handleChange}>
+    <Select {...props} value={value?.toString() ?? ""} onValueChange={handleChange}>
       <SelectTrigger className={className}>
         <SelectValue />
       </SelectTrigger>
@@ -68,20 +72,20 @@ export const FieldSelectInput = memo(function FieldSelectInput<T extends FieldLi
   );
 });
 
-interface FieldError<T extends FieldLikeAny> extends React.InputHTMLAttributes<HTMLParagraphElement> {
+interface ErrorLike<T extends FieldLikeAny> extends React.InputHTMLAttributes<HTMLParagraphElement> {
   field: T;
   beforeError?: "info" | "warn" | "error";
   children?: React.ReactNode;
   info?: ReactNode;
 }
-export const FieldError = memo(function Error<T extends FieldLikeAny>({
+export const ErrorLike = memo(function Error<T extends FieldLikeAny>({
   field,
   className,
   beforeError = "info",
   info,
   children,
   ...props
-}: FieldError<T>) {
+}: ErrorLike<T>) {
   const error = field.error();
   const maxLevel = field.formStatus === "errored" ? "error" : beforeError;
 
@@ -113,10 +117,10 @@ export const FieldError = memo(function Error<T extends FieldLikeAny>({
   );
 });
 
-interface FieldInfo<T extends FieldLikeAny> extends React.InputHTMLAttributes<HTMLParagraphElement> {
+interface InfoLike<T extends FieldLikeAny> extends React.InputHTMLAttributes<HTMLParagraphElement> {
   field: T;
 }
-export const FieldInfo = memo(function Error<T extends FieldLikeAny>({ field, className, ...props }: FieldInfo<T>) {
+export const InfoLike = memo(function Error<T extends FieldLikeAny>({ field, className, ...props }: InfoLike<T>) {
   return (
     <p {...props} className={cn("text-sm text-slate-500", className)}>
       Mounted: {field.isMounted.toString()} - Dirty: {field.isDirty.toString()} - Form Status: {field.formStatus}
@@ -124,15 +128,15 @@ export const FieldInfo = memo(function Error<T extends FieldLikeAny>({ field, cl
   );
 });
 
-interface UnmountedErrors<T extends FormLike<FormLikeAny>>
+interface UnmountedErrorsLike<T extends FormLike<FormLikeAny>>
   extends Omit<React.InputHTMLAttributes<HTMLParagraphElement>, "form"> {
   form: T;
 }
-export const UnmountedErrors = memo(function UnmountedErrors<T extends FormLike<FormLikeAny>>({
+export const UnmountedErrorsLike = memo(function UnmountedErrorsLike<T extends FormLike<FormLikeAny>>({
   form,
   className,
   ...props
-}: UnmountedErrors<T>) {
+}: UnmountedErrorsLike<T>) {
   return Object.entries(form.flatUnmountedErrors())
     .sort(([, a], [, b]) => (a?.level === "warn" && b?.level === "warn" ? 0 : a?.level === "warn" ? -1 : 1))
     .map(([key, error]) => (

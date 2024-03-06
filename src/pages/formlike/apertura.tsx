@@ -1,5 +1,5 @@
 import { SelectItem } from "@/components/ui/select";
-import { FieldError, FieldInput, FieldSelectInput, UnmountedErrors } from "@/formlike/components";
+import { ErrorLike, InputLike, SelectLike, UnmountedErrorsLike } from "@/formlike/components";
 import { type FieldLikeAny, enougth, useFieldLike, useFormLike } from "@/formlike/hooks";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -113,7 +113,7 @@ export default function Page() {
             <ViewJSON data={person.errors()} />
           </Card>
           <Card label="Unmounted Errors">
-            <UnmountedErrors form={person} />
+            <UnmountedErrorsLike form={person} />
           </Card>
         </div>
         <div className="space-y-2">
@@ -122,35 +122,35 @@ export default function Page() {
 
           <Card label="Documento">
             <div className="flex">
-              <FieldSelectInput field={person.form.general.identity.type}>
+              <SelectLike field={person.form.general.identity.type}>
                 <SelectItem value="dni">DNI</SelectItem>
                 <SelectItem value="passport">Pasaporte</SelectItem>
-              </FieldSelectInput>
-              <FieldInput field={person.form.general.identity.number} valueFormatter={Number} />
+              </SelectLike>
+              <InputLike field={person.form.general.identity.number} setAs={Number} />
             </div>
-            <FieldError field={person.form.general.identity.type} />
-            <FieldError field={person.form.general.identity.number} />
+            <ErrorLike field={person.form.general.identity.type} />
+            <ErrorLike field={person.form.general.identity.number} />
           </Card>
 
           <Card label="Documento Legal">
             <div className="flex">
-              <FieldSelectInput field={person.form.general.legalIdentity.type}>
+              <SelectLike field={person.form.general.legalIdentity.type}>
                 <SelectItem value="dni">DNI</SelectItem>
                 <SelectItem value="passport">Pasaporte</SelectItem>
-              </FieldSelectInput>
-              <FieldInput field={person.form.general.legalIdentity.number} valueFormatter={Number} />
+              </SelectLike>
+              <InputLike field={person.form.general.legalIdentity.number} setAs={Number} />
             </div>
-            <FieldError field={person.form.general.legalIdentity.type} />
-            <FieldError field={person.form.general.legalIdentity.number} />
+            <ErrorLike field={person.form.general.legalIdentity.type} />
+            <ErrorLike field={person.form.general.legalIdentity.number} />
           </Card>
 
           <Card label="Nombre">
             <div className="flex">
-              <FieldInput field={person.form.general.name} />
-              <FieldInput field={person.form.general.lastName} />
+              <InputLike field={person.form.general.name} />
+              <InputLike field={person.form.general.lastName} />
             </div>
-            <FieldError field={person.form.general.name} />
-            <FieldError field={person.form.general.lastName} />
+            <ErrorLike field={person.form.general.name} />
+            <ErrorLike field={person.form.general.lastName} />
           </Card>
           <FieldSelect label="Nacionalidad" field={person.form.general.nationality}>
             <SelectItem value="argentina">Argentina</SelectItem>
@@ -159,10 +159,10 @@ export default function Page() {
 
           <Field
             label="Nacimiento"
-            type="date"
             field={person.form.general.birthday}
-            value={person.form.general.birthday.get()?.toISOString()?.split("T")[0]}
-            valueFormatter={(val) => new Date(val)}
+            type="date"
+            valueAs={(v) => v?.toISOString()?.split("T")[0] ?? ""}
+            setAs={(val) => new Date(val)}
           />
 
           <FieldSelect label="Lugar Nacimiento" field={person.form.general.birthplace}>
@@ -216,29 +216,25 @@ function Card({
   );
 }
 
-function Field<T extends FieldLikeAny>({
-  field,
-  info,
-  label: title,
-  value,
-  type,
-  className = "",
-  valueFormatter,
-}: {
+interface Field<T extends FieldLikeAny> extends InputLike<T> {
   label: string;
   info?: string;
-  className?: string;
-  type?: string;
-  field: T;
-  value?: string;
-  valueFormatter?: (value: string) => ReturnType<T["get"]>;
-}) {
+  fieldClassName?: string;
+}
+
+function Field<T extends FieldLikeAny>({ field, info, label, fieldClassName, ...props }: Field<T>) {
   return (
-    <Card label={title} className={className}>
-      <FieldInput field={field} type={type} value={value} valueFormatter={valueFormatter} />
-      <FieldError field={field} info={info} />
+    <Card label={label} className={fieldClassName}>
+      <InputLike field={field} {...props} />
+      <ErrorLike field={field} info={info} />
     </Card>
   );
+}
+
+interface FieldSelect<T extends FieldLikeAny> extends SelectLike<T> {
+  label: string;
+  info?: string;
+  fieldClassName?: string;
 }
 
 function FieldSelect<T extends FieldLikeAny>({
@@ -258,8 +254,8 @@ function FieldSelect<T extends FieldLikeAny>({
 }) {
   return (
     <Card label={title} className={className}>
-      <FieldSelectInput field={field}>{children}</FieldSelectInput>
-      <FieldError field={field} info={info} />
+      <SelectLike field={field}>{children}</SelectLike>
+      <ErrorLike field={field} info={info} />
     </Card>
   );
 }

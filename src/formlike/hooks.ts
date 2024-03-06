@@ -208,12 +208,12 @@ export function useFormLike<TForm extends FormLikeAny, TSchema extends z.ZodType
         const schema = options.schema;
         if (!schema) return false;
         const value = get();
-        schema.parse(value);
+        const parsed = schema.parse(value) as z.output<TSchema>;
         setFormErrors({} as never);
         const areFieldErrors = Object.values(flatErrors()).filter(Boolean).length > 0;
         if (areFieldErrors) throw new Error("Field errors");
         updateFormStatus("valid");
-        props?.valid?.(value as z.infer<TSchema>);
+        props?.valid?.(parsed);
         return true;
       } catch (error) {
         if (error instanceof z.ZodError) {
