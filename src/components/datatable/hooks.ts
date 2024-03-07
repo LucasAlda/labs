@@ -293,7 +293,7 @@ type GetRow<T> = T extends Array<infer K extends Record<string, unknown>>
     : K
   : never;
 
-export type UseTable<TRow = Record<string, unknown>> = {
+export interface UseTable<TRow = Record<string, unknown>> {
   table: Table<TRow>;
   setColumns: Dispatch<SetStateAction<ColumnProps[]>>;
   columns: ColumnProps[];
@@ -307,7 +307,7 @@ export type UseTable<TRow = Record<string, unknown>> = {
   paginationDefault?: number;
   reduce: <T>(column: (acc: T, row: TRow) => unknown, initial: T, options?: { onlyVisible?: boolean }) => T;
   sum: (column: keyof TRow | ((row: TRow) => unknown), options?: { onlyVisible?: boolean }) => number;
-};
+}
 
 function genericSearch(row: Row<Record<string, unknown>>, globalFilter: string) {
   const res = row.getVisibleCells().some((cell) => {

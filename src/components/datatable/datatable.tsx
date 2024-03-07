@@ -34,10 +34,10 @@ import {
 } from "@/components/datatable/hooks";
 import { DataTablePagination } from "@/components/datatable/pagination";
 
-export type DataTableRootProps<TRow = Record<string, unknown>> = TableCardProps & {
+export interface DataTableRootProps<TRow = Record<string, unknown>> extends TableCardProps {
   children: ReactNode;
   table: UseTable<TRow>;
-};
+}
 function DataTableRoot({ table, ...props }: DataTableRootProps) {
   return (
     <DataTableContext.Provider value={table}>
@@ -126,7 +126,7 @@ export const DataTableViewOptions = memo(function DataTableViewOptions() {
   );
 });
 
-export type RowsProps<TRow = Record<string, unknown>> = {
+export interface RowsProps<TRow = Record<string, unknown>> {
   children: ReactNode;
   className?: string;
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
@@ -134,7 +134,7 @@ export type RowsProps<TRow = Record<string, unknown>> = {
     [k in NonNullable<VariantProps<typeof rowVariants>["variant"]>]?: boolean;
   };
   footerVariant?: NonNullable<VariantProps<typeof rowVariants>["variant"]>;
-};
+}
 
 function getColumnProp<T extends ColumnProp<Record<string, unknown>, unknown>>(
   prop: T,
@@ -424,15 +424,13 @@ function DatabaseDropdown({ label, children: childrenRaw, ...props }: ColumnProp
   );
 }
 
-export type ActionProps<TRow = Record<string, unknown>> = Omit<
-  ButtonProps,
-  "onClick" | "className" | "disabled" | "children"
-> & {
+export interface ActionProps<TRow = Record<string, unknown>>
+  extends Omit<ButtonProps, "onClick" | "className" | "disabled" | "children"> {
   onClick?: (props: { row: TRow; controller: Row<TRow>; variant: VariantProps<typeof rowVariants>["variant"] }) => void;
   className?: ColumnProp<TRow, string>;
   disabled?: ColumnProp<TRow, boolean>;
   children?: ColumnProp<TRow, ReactNode>;
-};
+}
 
 function DatabaseAction({ className: _className, disabled: _disabled, children: _children, ...props }: ActionProps) {
   const { variant } = useTableRowContext();

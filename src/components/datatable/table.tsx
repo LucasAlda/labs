@@ -6,19 +6,19 @@ import type { HTMLProps, MouseEventHandler, ReactNode } from "react";
 import { memo } from "react";
 import { createContext, useContext } from "react";
 
-type TableContextType = {
+interface TableContextType {
   condensed?: VariantProps<typeof cellVariants>["condensed"];
-  rounded?: "all" | "perimeter" | "none";
-};
+  rounded?: "all" | "perimeter" | "none" | undefined | null;
+}
 const TableContext = createContext<TableContextType | null>(null);
 export const useTableContext = () => useContext(TableContext)!;
 
-export type TableProps = {
+export interface TableProps extends TableContextType {
   tableProps?: HTMLProps<HTMLTableElement>;
   children?: ReactNode;
   className?: string;
   fixed?: boolean;
-} & TableContextType;
+}
 
 export function Table({ children, className, rounded, condensed, tableProps, fixed = false }: TableProps) {
   const ctx = useTableContext();
@@ -55,7 +55,9 @@ export function Table({ children, className, rounded, condensed, tableProps, fix
   );
 }
 
-export type TableHeadProps = { children?: ReactNode } & TableContextType;
+export interface TableHeadProps extends TableContextType {
+  children?: ReactNode;
+}
 
 const TableHead = memo(function TableHead({ children, condensed, rounded }: TableHeadProps) {
   const ctx = useTableContext();
@@ -100,16 +102,17 @@ const columnVariants = cva(
     },
   }
 );
-export type TableColumnProps = TableContextType &
-  VariantProps<typeof columnVariants> & {
-    children?: ReactNode;
-    order?: "desc" | "asc" | "none";
-    className?: string;
-    thProps?: Omit<HTMLProps<HTMLTableCellElement>, "className">;
-    colSpan?: number;
-    accessor?: string;
-    accessorAlias?: string;
-  };
+
+export interface TableColumnProps extends TableContextType, VariantProps<typeof columnVariants> {
+  children?: ReactNode;
+  order?: "desc" | "asc" | "none";
+  className?: string;
+  thProps?: Omit<HTMLProps<HTMLTableCellElement>, "className">;
+  colSpan?: number;
+  accessor?: string;
+  accessorAlias?: string;
+}
+
 const TableColumn = memo(function TableColumn({
   children,
   thProps,
@@ -141,7 +144,8 @@ const TableColumn = memo(function TableColumn({
   );
 });
 
-type TableBodyProps = TableHeadProps;
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface TableBodyProps extends TableHeadProps {}
 const TableBody = memo(function TableBody({ children, condensed, rounded }: TableBodyProps) {
   const ctx = useTableContext();
 
@@ -174,18 +178,17 @@ export const rowVariants = cva("group", {
   },
 });
 
-export type TableRowProps = {
+export interface TableRowProps extends VariantProps<typeof rowVariants>, TableContextType {
   trProps?: Omit<HTMLProps<HTMLTableRowElement>, "className" | "children">;
   children: ReactNode;
   className?: string;
   borderless?: boolean;
   onClick?: MouseEventHandler<HTMLTableRowElement>;
-} & VariantProps<typeof rowVariants> &
-  TableContextType;
+}
 
-type TableRowContextType = {
+interface TableRowContextType {
   variant?: VariantProps<typeof rowVariants>["variant"];
-};
+}
 const TableRowContext = createContext<TableRowContextType | null>(null);
 export const useTableRowContext = () => useContext(TableRowContext)!;
 
@@ -293,16 +296,17 @@ const cellVariants = cva(
   }
 );
 
-export type TableCellProps = {
+export interface TableCellProps
+  extends Omit<HTMLProps<HTMLTableCellElement>, "className" | "children">,
+    VariantProps<typeof cellVariants>,
+    TableContextType {
   children?: ReactNode;
   className?: string;
   isNumber?: boolean;
   isDate?: boolean;
   accessor?: string;
   accessorAlias?: string;
-} & VariantProps<typeof cellVariants> &
-  TableContextType &
-  Omit<HTMLProps<HTMLTableCellElement>, "className" | "children">;
+}
 const TableCell = memo(function TableCell({
   children,
   className,
@@ -368,10 +372,11 @@ const containerToTableVariant = {
   island: "perimeter",
   narrow: "none",
 } as const;
-export type TableCardProps = {
+
+export interface TableCardProps extends VariantProps<typeof containerVariants> {
   children: ReactNode;
   className?: string;
-} & VariantProps<typeof containerVariants>;
+}
 export const TableContainer = ({ children, variant = "card", className }: TableCardProps) => {
   return (
     <TableContext.Provider value={{ condensed: false, rounded: containerToTableVariant[variant ?? "card"] }}>
