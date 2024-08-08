@@ -30,11 +30,13 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { generateData } from "@/faker";
 
-import { useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { useWhyDidYouUpdate } from "use-why-did-you-update";
 
 export default function Example() {
   const [data, setData] = useState<typeof DATA>();
+
+  // const {data } =  trpc.comitente.position.useQuery({comitenteId: 13605})
 
   useEffect(() => {
     setTimeout(() => {
@@ -77,6 +79,18 @@ export default function Example() {
 
   useWhyDidYouUpdate("Example", table);
 
+  useEffect(() => {
+    setInterval(() => {
+      setCounter((prev) => prev + 1);
+    }, 100);
+  }, []);
+
+  const getRow = (row: Row) => {
+    return row;
+  };
+
+  const result = { first: data[0], last: data?.at(-1) };
+
   return (
     <div className="space-y-16 py-16 sm:p-16">
       <DataTable.Root table={table} variant="narrow">
@@ -84,7 +98,7 @@ export default function Example() {
           <Button onClick={() => setCondensed((p) => !p)} variant={"outline"} size="sm">
             {condensed ? "Condensed" : "Condense"}
           </Button>
-          <DataTable.Search />
+          <DataTable.Search cheapResult={result} getRow={getRow} />
           <DataTable.Config />
         </DataTable.Header>
         <DataTable.Table condensed="sm">
@@ -99,7 +113,7 @@ export default function Example() {
             <DataTable.Column title collapsible accessor="type" label="Tipo" align="center" />
             <DataTable.Column accessor="title" label="Concepto" align="center" />
             <DataTable.Column accessor="code" label="Codigo" align="right">
-              {({ row }) => <div>{row.code}</div>}
+              {({ row }) => <div className="text-red-500">{row.code}</div>}
             </DataTable.Column>
             <DataTable.Column accessor="abbreviation" label="Abreviatura" align="center" />
             <DataTable.Column accessor="quantity" label="Cantidad" align="right" />

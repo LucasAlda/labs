@@ -2,7 +2,6 @@
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { formatNumber } from "@/lib/utils";
 import {
-  type Column,
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
@@ -12,37 +11,28 @@ import {
   type HeaderContext,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { type ReactNode, useEffect, useMemo, useState, useId } from "react";
-import { useWhyDidYouUpdate } from "use-why-did-you-update";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 type TRowData = Record<string, unknown>;
 
 // TODO fix later
 type MyColumn<TRow extends TRowData> = ColumnDef<TRow, unknown> & {
-  // accessorKey: string | symbol | number;
-  // footer: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
   meta: {
     align?: "left" | "center" | "right";
     onClick?: (props: { row: TRow; cell: unknown; tCell: Cell<TRow, unknown>; tRow: Row<TRow> }) => void;
   };
 };
-// type MyColumn<TRow extends TRowData> = {
-//   accessorKey: string | symbol | number;
-//   footer: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
-//   meta: {
-//     align?: "left" | "center" | "right";
-//     onClick?: (props: { row: TRow; cell: unknown; tCell: Cell<TRow, unknown>; tRow: Row<TRow> }) => void;
-//   };
-// };
 
 type NestedKeyOf<ObjectType extends object> = {
   [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
-    ? `${Key}` | `${Key}.${NestedKeyOf<ObjectType[Key]>}`
+    ? ObjectType[Key] extends Date
+      ? `${Key}`
+      : `${Key}.${NestedKeyOf<ObjectType[Key]>}`
     : `${Key}`;
 }[keyof ObjectType & (string | number)];
 
 function date<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
-  accessor: TAccessor,
+  accessor: TAccessor | (() => string),
   props: {
     label: string;
     align?: "left" | "center" | "right";
@@ -60,7 +50,8 @@ function date<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
   }
 ): MyColumn<TRow> {
   return {
-    accessorKey: accessor,
+    header: props.label,
+    ...(typeof accessor === "string" ? { accessorKey: accessor } : { accessorFn: accessor }),
     footer: props.footer as never,
     cell:
       props.cell ??
@@ -195,6 +186,39 @@ function actions<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
   };
 }
 
+function custom<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
+  accessor: TAccessor | (() => string),
+  props: {
+    label?: string;
+    align?: "left" | "center" | "right";
+    footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
+    onClick?: (props: {
+      row: TRow;
+      cell: TRow[TAccessor];
+      tCell: Cell<TRow, TRow[TAccessor]>;
+      tRow: Row<TRow>;
+    }) => void;
+  } = {},
+  component: (props: {
+    row: TRow;
+    cell: TRow[TAccessor];
+    tCell: Cell<TRow, TRow[TAccessor]>;
+    tRow: Row<TRow>;
+  }) => ReactNode
+): MyColumn<TRow> {
+  return {
+    header: props.label,
+    ...(typeof accessor === "string" ? { accessorKey: accessor } : { accessorFn: accessor, header: accessor() }),
+    footer: props.footer as never,
+    cell: ({ row, getValue, cell }) =>
+      component({ row: row.original, cell: getValue(), tCell: cell, tRow: row } as never),
+    meta: {
+      align: props.align,
+      onClick: props.onClick as never,
+    },
+  };
+}
+
 type FooterFn<TRow extends TRowData> = (accessor?: keyof TRow) => (props: HeaderContext<TRow, unknown>) => ReactNode;
 const total = (accessor?: string) => {
   return ({ table, column }: HeaderContext<TRowData, unknown>) => {
@@ -208,6 +232,7 @@ type ColumnsHelperFunction<T extends TRowData> = (d: {
   text: typeof text;
   date: typeof date;
   number: typeof number;
+  custom: typeof custom;
   total: FooterFn<T>;
   actions: typeof actions;
 }) => MyColumn<T>[];
@@ -220,7 +245,7 @@ export function useTableHook<TRow extends TRowData>(props: {
 }) {
   const _columns = props.columns;
   const frozenColumns = useMemo(() => {
-    return _columns({ text, date, number, actions, total: total as never }) ?? [];
+    return _columns({ text, date, number, actions, custom, total: total as never }) ?? [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...(props.columnsDeps ?? [])]);
 
@@ -238,6 +263,9 @@ export function useTableHook<TRow extends TRowData>(props: {
   };
 }
 
+// TODO fix d.total for nested keys
+// TODO fix nested keys inference
+
 export function Example() {
   const [counter, setCounter] = useState(0);
 
@@ -252,16 +280,27 @@ export function Example() {
   const hook = useTableHook({
     data,
     columns: (d) => [
+      d.date("money", {
+        label: "Nacimiento",
+        time: true,
+        date: false,
+        separator: "/",
+        onClick: ({ cell }) => alert(cell),
+      }),
       d.text("name", { label: "Name", align: "center", onClick: ({ row }) => alert(row.age) }),
       d.text("age", { label: "Age", align: "right", footer: d.total() }),
       d.text("address.city", { label: "City", align: "left" }),
       d.text("address.number", { label: "City", align: "left", footer: d.total() }),
       d.date("birth", { label: "Birth", separator: "/", time: true }),
       d.number("money", { label: "Money", decimals: 3, currency: "u$s", empty: "" }),
+      d.custom("name", { label: "Custom" }, ({ row, cell }) => {
+        return <div className="bg-red-100">Custom {row.age}</div>;
+      }),
       d.actions([
         { label: "Edit", action: ({ row }) => alert("Edit " + row.name) },
         { label: "Delete", variant: "destructive", action: ({ row }) => alert("Delete " + row.name) },
       ]),
+      { accessorKey: "age", meta: {} },
     ],
     onRowClick: ({ row }) => {
       alert("Row clicked: " + row.name);
@@ -321,7 +360,6 @@ export function Example() {
                 <tr key={row.id} onClick={() => hook.onRowClick?.({ row: row.original, tRow: row })}>
                   {row.getVisibleCells().map((cell) => {
                     const col = cell.column.columnDef as MyColumn<never>;
-                    console.log(col.meta);
                     return (
                       <td
                         key={cell.id}
