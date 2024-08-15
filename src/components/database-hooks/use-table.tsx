@@ -194,23 +194,23 @@ function custom<TRow extends TRowData, TAccessor extends string>(
   return column;
 }
 
-type FooterFn<TRow extends TRowData> = (accessor?: keyof TRow) => (props: HeaderContext<TRow, unknown>) => ReactNode;
-const total = (accessor?: string) => {
-  return ({ table, column }: HeaderContext<TRowData, unknown>) => {
+function total<TRow extends TRowData, TAccessor extends keyof TRow>(accessor?: TAccessor) {
+  return ({ table, column }: HeaderContext<TRow, unknown>) => {
     return table
       .getFilteredRowModel()
-      .rows.reduce((acc, curr) => Number(acc) + Number(curr.getValue(accessor ?? column.id)), 0);
+      .rows.reduce((acc, curr) => Number(acc) + Number(curr.getValue((accessor as string) ?? column.id)), 0);
   };
-};
+}
 
 type ColumnsHelperFunction<T extends TRowData> = (d: {
   text: typeof text;
   date: typeof date;
   number: typeof number;
   custom: typeof custom;
-  total: FooterFn<T>;
+  total: typeof total;
   actions: typeof actions;
 }) => MyColumn<T>[];
+const columnHelpers = { text, date, number, actions, custom, total: total };
 
 export function useTableHook<TRow extends TRowData>(props: {
   data: TRow[];
@@ -220,7 +220,7 @@ export function useTableHook<TRow extends TRowData>(props: {
 }) {
   const _columns = props.columns;
   const frozenColumns = useMemo(() => {
-    return _columns({ text, date, number, actions, custom, total: total as never }) ?? [];
+    return _columns(columnHelpers) ?? [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...(props.columnsDeps ?? [])]);
 
@@ -258,7 +258,7 @@ export function Example() {
     columns: (d) => [
       d.text("name"),
       d.text("address.city", { label: "City", align: "left" }),
-      d.text("address.number", { label: "City", align: "left", footer: d.total() }),
+      d.text("address.number", { label: "City", align: "left", footer: d.total("age") }),
       d.date("birth", { label: "Birth", separator: "/", time: true }),
       d.number("money", { label: "Money", decimals: 3, currency: "u$s", empty: "" }),
       d.custom("age2", { label: "Custom" }, ({ row, cell }) => {
