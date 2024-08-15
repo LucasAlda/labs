@@ -9,19 +9,11 @@ import {
   type Cell,
   flexRender,
   type HeaderContext,
+  type CellContext,
+  getSortedRowModel,
 } from "@tanstack/react-table";
-import { format } from "date-fns";
+import { format, isDate } from "date-fns";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-
-type TRowData = Record<string, unknown>;
-
-// TODO fix later
-type MyColumn<TRow extends TRowData> = ColumnDef<TRow, unknown> & {
-  meta: {
-    align?: "left" | "center" | "right";
-    onClick?: (props: { row: TRow; cell: unknown; tCell: Cell<TRow, unknown>; tRow: Row<TRow> }) => void;
-  };
-};
 
 type NestedKeyOf<ObjectType extends object> = {
   [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
@@ -31,192 +23,175 @@ type NestedKeyOf<ObjectType extends object> = {
     : `${Key}`;
 }[keyof ObjectType & (string | number)];
 
-function date<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
-  accessor: TAccessor | (() => string),
-  props: {
-    label: string;
+type TRowData = Record<string, unknown>;
+
+// TODO fix later
+type MyColumn<TRow extends TRowData> = ColumnDef<TRow, unknown> & {
+  meta: {
     align?: "left" | "center" | "right";
-    footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
-    cell?: () => ReactNode;
-    onClick?: (props: {
-      row: TRow;
-      cell: TRow[TAccessor];
-      tCell: Cell<TRow, TRow[TAccessor]>;
-      tRow: Row<TRow>;
-    }) => void;
-    separator?: string;
-    date?: boolean;
-    time?: boolean;
-  }
-): MyColumn<TRow> {
+    type?: string;
+    onClick?: (props: { row: TRow; cell: unknown; tCell: Cell<TRow, unknown>; tRow: Row<TRow> }) => void;
+  };
+};
+
+interface CellCallbackProps<TRow, TValue> {
+  cell: TValue;
+  tCell: Cell<TRow, TValue>;
+  row: TRow;
+  tRow: Row<TRow>;
+}
+
+interface BaseColumnOptions<TRow extends TRowData, TValue> {
+  label?: string;
+  align?: "left" | "center" | "right";
+  footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
+  onClick?: (props: CellCallbackProps<TRow, TValue>) => void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function baseColumn(accessor: string, props: BaseColumnOptions<any, any>) {
   return {
-    header: props.label,
+    header: props.label ?? accessor,
     ...(typeof accessor === "string" ? { accessorKey: accessor } : { accessorFn: accessor }),
     footer: props.footer as never,
-    cell:
-      props.cell ??
-      (({ getValue }) => {
-        if (props.time && props.date !== false) {
-          return format(getValue() as Date, `dd${props.separator ?? "-"}MM${props.separator ?? "-"}yyyy HH:mm`);
-        }
-        if (props.date === false) {
-          return format(getValue() as Date, `HH:mm`);
-        }
-        return format(getValue() as Date, `dd${props.separator ?? "-"}MM${props.separator ?? "-"}yyyy`);
-      }),
-    meta: {
-      align: props.align ?? "center",
-      onClick: props.onClick as never,
-    },
-  };
-}
-
-function number<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
-  accessor: TAccessor,
-  props: {
-    label: string;
-    align?: "left" | "center" | "right";
-    footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
-    cell?: () => ReactNode;
-    onClick?: (props: {
-      row: TRow;
-      cell: TRow[TAccessor];
-      tCell: Cell<TRow, TRow[TAccessor]>;
-      tRow: Row<TRow>;
-    }) => void;
-    decimals?: number;
-    empty?: string;
-    currency?: string;
-  }
-): MyColumn<TRow> {
-  return {
-    header: props.label,
-    accessorKey: accessor,
-    footer: props.footer as never,
-    cell:
-      props.cell ??
-      (({ getValue }) => {
-        return (
-          (props.currency ? props.currency + " " : "") +
-          formatNumber(Number(getValue()), { decimals: props.decimals, emptyValues: props.empty })
-        );
-      }),
-    meta: {
-      align: props.align ?? "right",
-      onClick: props.onClick as never,
-    },
-  };
-}
-
-function text<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
-  accessor: TAccessor,
-  props: {
-    label: string;
-    align?: "left" | "center" | "right";
-    footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
-    cell?: () => ReactNode;
-    onClick?: (props: {
-      row: TRow;
-      cell: TRow[TAccessor];
-      tCell: Cell<TRow, TRow[TAccessor]>;
-      tRow: Row<TRow>;
-    }) => void;
-  }
-): MyColumn<TRow> {
-  return {
-    header: props.label,
-    accessorKey: accessor,
-    footer: props.footer as never,
-    ...(props.cell ? { cell: props.cell } : {}),
     meta: {
       align: props.align,
       onClick: props.onClick as never,
     },
   };
 }
-function actions<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
+
+interface TextColumnOptions<TRow extends TRowData, TValue> extends BaseColumnOptions<TRow, TValue> {
+  format?: (props: CellCallbackProps<TRow, TValue>) => ReactNode;
+}
+function text<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
+  accessor: TAccessor | (() => string),
+  props: TextColumnOptions<TRow, TRow[TAccessor]> = {}
+): MyColumn<TRow> {
+  const column: MyColumn<TRow> = baseColumn(typeof accessor === "string" ? accessor : accessor(), props);
+  column.meta.type = "text";
+
+  if (props.format) {
+    column.cell = ({ row, getValue, cell }) =>
+      props.format?.({ row: row.original, cell: getValue(), tCell: cell, tRow: row } as never);
+  }
+
+  return column;
+}
+
+interface NumberColumnOptions<TRow extends TRowData, TValue> extends BaseColumnOptions<TRow, TValue> {
+  format?: (props: CellCallbackProps<TRow, TValue>) => ReactNode;
+  decimals?: number;
+  empty?: string;
+  currency?: string;
+}
+function number<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
+  accessor: TAccessor | (() => string),
+  props: NumberColumnOptions<TRow, TRow[TAccessor]> = {}
+): MyColumn<TRow> {
+  const column: MyColumn<TRow> = baseColumn(typeof accessor === "string" ? accessor : accessor(), props);
+
+  column.meta.type = "number";
+  column.meta.align ??= "right";
+
+  column.cell = ({ row, getValue, cell }) => {
+    if (props.format) {
+      return props.format?.({ row: row.original, cell: getValue(), tCell: cell, tRow: row } as never);
+    }
+    return (
+      (props.currency ? props.currency + " " : "") +
+      formatNumber(Number(getValue()), { decimals: props.decimals, emptyValues: props.empty })
+    );
+  };
+
+  return column;
+}
+
+interface DateColumnOptions<TRow extends TRowData, TValue> extends BaseColumnOptions<TRow, TValue> {
+  format?: (props: CellCallbackProps<TRow, TValue>) => ReactNode;
+  separator?: string;
+  date?: boolean;
+  time?: boolean;
+}
+function date<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
+  accessor: TAccessor | (() => string),
+  props: DateColumnOptions<TRow, TRow[TAccessor]> = {}
+): MyColumn<TRow> {
+  const column: MyColumn<TRow> = baseColumn(typeof accessor === "string" ? accessor : accessor(), props);
+
+  column.meta.type = "number";
+  column.meta.align ??= "center";
+
+  column.cell = ({ row, getValue, cell }) => {
+    if (props.format) {
+      return props.format?.({ row: row.original, cell: getValue(), tCell: cell, tRow: row } as never);
+    }
+
+    const date = getValue() as Date;
+    if (!isDate(date)) {
+      if (date) console.log("Invalid date at row:", row.index, date);
+      return date;
+    }
+
+    const datetime = format(date, `dd${props.separator ?? "-"}MM${props.separator ?? "-"}yyyy HH:mm`);
+    if (props.date === false) {
+      return datetime.split(" ")[1];
+    } else if (!props.time) {
+      return datetime.split(" ")[0];
+    } else return datetime;
+  };
+
+  return column;
+}
+
+function actions<TRow extends TRowData>(
   actions: Array<{
     label: string;
     variant?: ButtonProps["variant"];
     action: (props: { row: TRow; tRow: Row<TRow> }) => void;
   }>,
-  props?: {
-    label?: string;
-    align?: "left" | "center" | "right";
-    footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
-    cell?: () => ReactNode;
-    onClick?: (props: {
-      row: TRow;
-      cell: TRow[TAccessor];
-      tCell: Cell<TRow, TRow[TAccessor]>;
-      tRow: Row<TRow>;
-    }) => void;
-  }
+  props: BaseColumnOptions<TRow, unknown> = {}
 ): MyColumn<TRow> {
-  const accessor = "actions"; // TODO fix later
+  const column: MyColumn<TRow> = baseColumn(props?.label ?? "actions", props);
 
-  return {
-    header: props?.label ?? "Actions",
-    accessorKey: accessor,
-    footer: props?.footer as never,
-    cell:
-      props?.cell ??
-      (({ row }) => {
-        return (
-          <div className="flex gap-1">
-            {actions.map((action, index) => {
-              return (
-                <Button
-                  key={index}
-                  variant={action.variant}
-                  size={"sm"}
-                  onClick={() => action.action({ row: row.original, tRow: row })}
-                >
-                  {action.label}
-                </Button>
-              );
-            })}
-          </div>
-        );
-      }),
-    meta: {
-      align: props?.align,
-      onClick: props?.onClick as never,
-    },
+  column.enableSorting = false;
+  column.meta.type = "actions";
+  column.header = props?.label ?? "Acciones";
+
+  column.cell = ({ row }) => {
+    return (
+      <div className="flex gap-1">
+        {actions.map((action, index) => {
+          return (
+            <Button
+              key={index}
+              variant={action.variant}
+              size={"sm"}
+              onClick={() => action.action({ row: row.original, tRow: row })}
+            >
+              {action.label}
+            </Button>
+          );
+        })}
+      </div>
+    );
   };
+
+  return column;
 }
 
-function custom<TRow extends TRowData, TAccessor extends NestedKeyOf<TRow>>(
-  accessor: TAccessor | (() => string),
-  props: {
-    label?: string;
-    align?: "left" | "center" | "right";
-    footer?: ReactNode | ((props: HeaderContext<TRow, unknown>) => ReactNode);
-    onClick?: (props: {
-      row: TRow;
-      cell: TRow[TAccessor];
-      tCell: Cell<TRow, TRow[TAccessor]>;
-      tRow: Row<TRow>;
-    }) => void;
-  } = {},
-  component: (props: {
-    row: TRow;
-    cell: TRow[TAccessor];
-    tCell: Cell<TRow, TRow[TAccessor]>;
-    tRow: Row<TRow>;
-  }) => ReactNode
+function custom<TRow extends TRowData, TAccessor extends string>(
+  accessor: TAccessor,
+  props: BaseColumnOptions<TRow, TRow[TAccessor]> = {},
+  component: (props: CellCallbackProps<TRow, TRow[TAccessor]>) => ReactNode
 ): MyColumn<TRow> {
-  return {
-    header: props.label,
-    ...(typeof accessor === "string" ? { accessorKey: accessor } : { accessorFn: accessor, header: accessor() }),
-    footer: props.footer as never,
-    cell: ({ row, getValue, cell }) =>
-      component({ row: row.original, cell: getValue(), tCell: cell, tRow: row } as never),
-    meta: {
-      align: props.align,
-      onClick: props.onClick as never,
-    },
-  };
+  const column: MyColumn<TRow> = baseColumn(accessor, props);
+
+  column.cell = ({ row, getValue, cell }) =>
+    component({ row: row.original, cell: getValue(), tCell: cell, tRow: row } as never);
+  column.meta.type = "custom";
+
+  return column;
 }
 
 type FooterFn<TRow extends TRowData> = (accessor?: keyof TRow) => (props: HeaderContext<TRow, unknown>) => ReactNode;
@@ -251,6 +226,7 @@ export function useTableHook<TRow extends TRowData>(props: {
 
   const tanstack = useReactTable({
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     columns: frozenColumns,
     data: props.data,
   });
@@ -280,20 +256,12 @@ export function Example() {
   const hook = useTableHook({
     data,
     columns: (d) => [
-      d.date("money", {
-        label: "Nacimiento",
-        time: true,
-        date: false,
-        separator: "/",
-        onClick: ({ cell }) => alert(cell),
-      }),
-      d.text("name", { label: "Name", align: "center", onClick: ({ row }) => alert(row.age) }),
-      d.text("age", { label: "Age", align: "right", footer: d.total() }),
+      d.text("name"),
       d.text("address.city", { label: "City", align: "left" }),
       d.text("address.number", { label: "City", align: "left", footer: d.total() }),
       d.date("birth", { label: "Birth", separator: "/", time: true }),
       d.number("money", { label: "Money", decimals: 3, currency: "u$s", empty: "" }),
-      d.custom("name", { label: "Custom" }, ({ row, cell }) => {
+      d.custom("age2", { label: "Custom" }, ({ row, cell }) => {
         return <div className="bg-red-100">Custom {row.age}</div>;
       }),
       d.actions([
@@ -316,7 +284,7 @@ export function Example() {
   return (
     <div>
       <div>Counter: {counter}</div>
-      <div>Frozen: {JSON.stringify(hook.columns)}</div>
+      <pre> {JSON.stringify(hook.columns, null, 2)}</pre>
       <table>
         <thead>
           {hook.tanstack.getHeaderGroups().map((headerGroup) => (
@@ -352,34 +320,31 @@ export function Example() {
           ))}
         </thead>
         <tbody>
-          {hook.tanstack
-            .getRowModel()
-            .rows.slice(0, 10)
-            .map((row) => {
-              return (
-                <tr key={row.id} onClick={() => hook.onRowClick?.({ row: row.original, tRow: row })}>
-                  {row.getVisibleCells().map((cell) => {
-                    const col = cell.column.columnDef as MyColumn<never>;
-                    return (
-                      <td
-                        key={cell.id}
-                        style={{ textAlign: col.meta.align }}
-                        onClick={() =>
-                          col.meta.onClick?.({
-                            cell: cell.getValue(),
-                            row: row.original as never,
-                            tCell: cell as never,
-                            tRow: row as never,
-                          })
-                        }
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+          {hook.tanstack.getRowModel().rows.map((row) => {
+            return (
+              <tr key={row.id} onClick={() => hook.onRowClick?.({ row: row.original, tRow: row })}>
+                {row.getVisibleCells().map((cell) => {
+                  const col = cell.column.columnDef as MyColumn<never>;
+                  return (
+                    <td
+                      key={cell.id}
+                      style={{ textAlign: col.meta.align }}
+                      onClick={() =>
+                        col.meta.onClick?.({
+                          cell: cell.getValue(),
+                          row: row.original as never,
+                          tCell: cell as never,
+                          tRow: row as never,
+                        })
+                      }
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
         <tfoot>
           {hook.tanstack.getFooterGroups().map((footerGroup) => (
