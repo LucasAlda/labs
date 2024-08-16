@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { DataTableColumnHeader } from "@/components/datatable/column-header";
+import { Table, type rowVariants } from "@/components/datatable/table";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { formatNumber } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import {
   getCoreRowModel,
   useReactTable,
@@ -11,7 +13,9 @@ import {
   type HeaderContext,
   type CellContext,
   getSortedRowModel,
+  type Table as TTable,
 } from "@tanstack/react-table";
+import { type VariantProps } from "class-variance-authority";
 import { format, isDate } from "date-fns";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -167,6 +171,7 @@ function actions<TRow extends TRowData>(
               key={index}
               variant={action.variant}
               size={"sm"}
+              className={cn("h-6 px-2")}
               onClick={() => action.action({ row: row.original, tRow: row })}
             >
               {action.label}
@@ -217,6 +222,7 @@ export function useTableHook<TRow extends TRowData>(props: {
   columns: ColumnsHelperFunction<TRow>;
   columnsDeps?: unknown[];
   onRowClick?: (props: { row: TRow; tRow: Row<TRow> }) => void;
+  variantFn?: (row: TRow) => NonNullable<VariantProps<typeof rowVariants>["variant"]>;
 }) {
   const _columns = props.columns;
   const frozenColumns = useMemo(() => {
@@ -232,10 +238,10 @@ export function useTableHook<TRow extends TRowData>(props: {
   });
 
   return {
-    columns: frozenColumns,
-    _columns,
+    // columns: frozenColumns,
     tanstack,
     onRowClick: props.onRowClick,
+    variantFn: props.variantFn,
   };
 }
 
@@ -273,93 +279,97 @@ export function Example() {
     onRowClick: ({ row }) => {
       alert("Row clicked: " + row.name);
     },
-    // variant: row => {
-    //   if (row.age > 40) {
-    //     return 'light'
-    //   }
-    //   return 'none'
-    // },
+    variantFn: (row) => {
+      if (row.age > 40) {
+        return "light";
+      }
+      return "none";
+    },
   });
 
   return (
     <div>
       <div>Counter: {counter}</div>
-      <pre> {JSON.stringify(hook.columns, null, 2)}</pre>
-      <table>
-        <thead>
-          {hook.tanstack.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
-                  <th key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={header.column.getCanSort() ? "cursor-pointer select-none" : ""}
-                        onClick={header.column.getToggleSortingHandler()}
-                        title={
-                          header.column.getCanSort()
-                            ? header.column.getNextSortingOrder() === "asc"
-                              ? "Sort ascending"
-                              : header.column.getNextSortingOrder() === "desc"
-                              ? "Sort descending"
-                              : "Clear sort"
-                            : undefined
-                        }
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {{
-                          asc: " 🔼",
-                          desc: " 🔽",
-                        }[header.column.getIsSorted() as string] ?? null}
-                      </div>
-                    )}
-                  </th>
-                );
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {hook.tanstack.getRowModel().rows.map((row) => {
-            return (
-              <tr key={row.id} onClick={() => hook.onRowClick?.({ row: row.original, tRow: row })}>
-                {row.getVisibleCells().map((cell) => {
-                  const col = cell.column.columnDef as MyColumn<never>;
-                  return (
-                    <td
-                      key={cell.id}
-                      style={{ textAlign: col.meta.align }}
-                      onClick={() =>
-                        col.meta.onClick?.({
-                          cell: cell.getValue(),
-                          row: row.original as never,
-                          tCell: cell as never,
-                          tRow: row as never,
-                        })
-                      }
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          {hook.tanstack.getFooterGroups().map((footerGroup) => (
-            <tr key={footerGroup.id}>
-              {footerGroup.headers.map((header) => (
-                <th key={header.id}>
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.footer, header.getContext())}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </tfoot>
-      </table>
+      {/* <div> {JSON.stringify(hook.columns, null, 2)}</div> */}
+      <NewDataTable table={hook} />
       <div>{hook.tanstack.getRowModel().rows.length.toLocaleString()} Rows</div>{" "}
     </div>
+  );
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function NewDataTable<T extends TRowData>({
+  table: { tanstack, onRowClick, variantFn },
+}: {
+  table: {
+    tanstack: TTable<T>;
+    variantFn?: (row: T) => VariantProps<typeof rowVariants>["variant"];
+    onRowClick?: (props: { row: T; tRow: Row<T> }) => void;
+  };
+}) {
+  return (
+    <Table>
+      <Table.Head>
+        {tanstack.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id}>
+            {headerGroup.headers.map((header) => {
+              const col = header.column.columnDef as MyColumn<never>;
+              const align = col.meta.align;
+
+              return (
+                <Table.Column key={header.id} colSpan={header.colSpan} align={align}>
+                  <div className="flex">
+                    <DataTableColumnHeader
+                      column={header.column}
+                      title={flexRender(header.column.columnDef.header, header.getContext())}
+                      labelPlace={align}
+                    />
+                  </div>
+                </Table.Column>
+              );
+            })}
+          </tr>
+        ))}
+      </Table.Head>
+      <Table.Body>
+        {tanstack.getRowModel().rows.map((row) => {
+          const variant = variantFn?.(row.original);
+          return (
+            <Table.Row variant={variant} key={row.id} onClick={() => onRowClick?.({ row: row.original, tRow: row })}>
+              {row.getVisibleCells().map((cell) => {
+                const col = cell.column.columnDef as MyColumn<never>;
+                return (
+                  <Table.Cell
+                    key={cell.id}
+                    align={col.meta.align}
+                    onClick={() =>
+                      col.meta.onClick?.({
+                        cell: cell.getValue(),
+                        row: row.original as never,
+                        tCell: cell as never,
+                        tRow: row as never,
+                      })
+                    }
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </Table.Cell>
+                );
+              })}
+            </Table.Row>
+          );
+        })}
+      </Table.Body>
+      <tfoot>
+        {tanstack.getFooterGroups().map((footerGroup) => (
+          <Table.Row variant="dark" key={footerGroup.id}>
+            {footerGroup.headers.map((header) => (
+              <Table.Cell key={header.id}>
+                {header.isPlaceholder ? null : flexRender(header.column.columnDef.footer, header.getContext())}
+              </Table.Cell>
+            ))}
+          </Table.Row>
+        ))}
+      </tfoot>
+    </Table>
   );
 }
 

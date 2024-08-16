@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { type ReactNode } from "react";
 
-interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
+interface DataTableColumnHeaderProps<TData, TValue> extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   column?: Column<TData, TValue>;
-  title: string;
+  title: ReactNode;
   labelPlace?: "center" | "right" | "left";
 }
 
